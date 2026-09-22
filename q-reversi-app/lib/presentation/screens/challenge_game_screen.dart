@@ -11,8 +11,11 @@ import '../../domain/entities/board.dart';
 import '../../domain/services/challenge_game_service.dart';
 import '../../domain/services/challenge_level_loader.dart';
 import '../../domain/services/operation_order_preference_service.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../providers/challenge_progress_notifier.dart';
 import '../providers/game_provider.dart';
+import '../input/cell_double_tap_apply.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/gate_button.dart';
 import '../widgets/operation_order_settings_dialog.dart';
@@ -55,8 +58,13 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   List<ChallengeLevel> _allLevels = const [];
   int _guideStepIndex = 0;
   List<_GuideStep> _guideSteps = const [];
+
   /// true のとき従来どおりゲート／盤面を順不同で選択できる
   bool _allowFreeSelectionOrder = false;
+
+  /// true のとき、ゲート選択後の同じ駒へのダブルタップで即適用する
+  bool _doubleTapApplyEnabled = false;
+  final _cellDoubleTap = CellDoubleTapApplyController();
   final GlobalKey _goalConditionKey = GlobalKey();
   final GlobalKey _xGateButtonKey = GlobalKey();
   final GlobalKey _boardAreaKey = GlobalKey();
@@ -69,10 +77,12 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   final ChallengeGameService _challengeService = ChallengeGameService();
   final ChallengeLevelLoader _levelLoader = ChallengeLevelLoader();
   final _operationOrderPrefs = OperationOrderPreferenceService();
+  late final BgmHandle _bgm;
 
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.challenge);
     _loadSwipePreviewData();
     _loadOperationOrderPreference();
     _maybeShowGuide();
@@ -80,22 +90,37 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   Future<void> _loadOperationOrderPreference() async {
     final allowFree = await _operationOrderPrefs.isFreeSelectionOrderEnabled();
+    final doubleTapApply = await _operationOrderPrefs.isDoubleTapApplyEnabled();
     if (!mounted) return;
     setState(() {
       _allowFreeSelectionOrder = allowFree;
+      _doubleTapApplyEnabled = doubleTapApply;
     });
   }
 
   Future<void> _openOperationOrderSettings() async {
     final result = await showOperationOrderSettingsDialog(context);
-    if (!mounted || result == null) return;
-    setState(() {
-      _allowFreeSelectionOrder = result;
-    });
+    if (!mounted) return;
+    if (result != null) {
+      setState(() {
+        _allowFreeSelectionOrder = result.allowFreeSelectionOrder;
+        _doubleTapApplyEnabled = result.doubleTapApplyEnabled;
+      });
+      return;
+    }
+    await _loadOperationOrderPreference();
+  }
+
+  bool _isDoubleTapApplyArmed(GameProvider provider) {
+    return _doubleTapApplyEnabled &&
+        _selectedGate != null &&
+        _guideOverlay == null &&
+        !provider.isProcessing;
   }
 
   @override
   void dispose() {
+    _bgm.release();
     if (_routeAnimationListener != null && _routeAnimation != null) {
       _routeAnimation!.removeStatusListener(_routeAnimationListener!);
     }
@@ -128,7 +153,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
     final routeAnimation = ModalRoute.of(context)?.animation;
     _routeAnimation = routeAnimation;
-    if (routeAnimation == null || routeAnimation.status == AnimationStatus.completed) {
+    if (routeAnimation == null ||
+        routeAnimation.status == AnimationStatus.completed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _startGuideOverlay();
@@ -223,7 +249,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         ? (highlightRect.bottom + 12.0)
         : (highlightRect.top - bubbleHeight - 12.0);
     final isBubbleAbove = top < highlightRect.top;
-    final connectorX = (center.dx - left).clamp(14.0, bubbleWidth - 14.0).toDouble();
+    final connectorX =
+        (center.dx - left).clamp(14.0, bubbleWidth - 14.0).toDouble();
 
     return Stack(
       children: [
@@ -281,13 +308,15 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                       borderRadius: BorderRadius.all(Radius.circular(12)),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             _guideSteps[_guideStepIndex].message,
-                            style: const TextStyle(color: Colors.white, fontSize: 15),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 15),
                           ),
                           const SizedBox(height: 8),
                           Align(
@@ -346,147 +375,162 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final challengeProgress = context.watch<ChallengeProgressNotifier>().progress;
+    final challengeProgress =
+        context.watch<ChallengeProgressNotifier>().progress;
     final gameState = _challengeService.createChallengeGameState(widget.level);
 
     return ChangeNotifierProvider(
       create: (_) => GameProvider(gameState),
       child: PopScope(
         canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
+        onPopInvokedWithResult: (didPop, result) async {
           if (didPop) return;
+          await SoundEffects.instance.untilReversePlaying();
+          if (!context.mounted) return;
           // システム戻る / AppBar 戻る → 選択画面セッションを終了
           context.read<ChallengePlaySession>().finish();
           Navigator.of(context).pop();
         },
         child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'レベル ${widget.level.displayLabel}',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF1A1F3A),
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              tooltip: '操作設定',
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: _openOperationOrderSettings,
+          appBar: AppBar(
+            title: Text(
+              'レベル ${widget.level.displayLabel}',
+              style: const TextStyle(color: Colors.white),
             ),
-          ],
-        ),
-        body: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragStart: (_) {
-            if (_isSwipeNavigating) return;
-            setState(() {
-              _horizontalDragOffset = 0;
-            });
-          },
-          onHorizontalDragUpdate: (details) {
-            if (_isSwipeNavigating) return;
-            setState(() {
-              _horizontalDragOffset += details.primaryDelta ?? 0;
-            });
-          },
-          onHorizontalDragEnd: _handleHorizontalDragEnd,
-          onHorizontalDragCancel: () {
-            if (_isSwipeNavigating) return;
-            setState(() {
-              _horizontalDragOffset = 0;
-            });
-          },
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: _buildSwipePreview(challengeProgress),
-              ),
-              Transform.translate(
-                offset: Offset(_horizontalDragOffset, 0),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF0A0E27),
-                        Color(0xFF1A1F3A),
-                      ],
-                    ),
-                  ),
-                  child: Consumer<GameProvider>(
-                    builder: (context, provider, _) {
-                      final state = provider.gameState;
-                      final currentPlayer = state.getCurrentPlayer();
-
-                      return SafeArea(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SingleChildScrollView(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // レベル情報
-                                    _buildLevelInfo(context, state),
-                                    
-                                    // ボード
-                                    ConstrainedBox(
-                                      key: _boardAreaKey,
-                                      constraints: BoxConstraints(
-                                        maxHeight: constraints.maxHeight * 0.5,
-                                        maxWidth: constraints.maxWidth,
-                                      ),
-                                      child: Center(
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: BoardWidget(
-                                            board: state.board,
-                                            selectedPositions: _selectedPositions,
-                                            highlightedPositions: _getAdjacentPositions(state.board),
-                                            lastTwoBitGatePositions: const [],
-                                            enableRowColumnButtons: true,
-                                            selectedGate: _selectedGate,
-                                            selectedRows: _selectedRow != null
-                                                ? {_selectedRow!: true}
-                                                : {},
-                                            selectedColumns: _selectedColumn != null
-                                                ? {_selectedColumn!: true}
-                                                : {},
-                                            onPositionTap: (position) {
-                                              _handleCellTap(context, provider, position.row, position.col);
-                                            },
-                                            onRowSelected: (row, side) {
-                                              _handleRowButtonTap(context, provider, row);
-                                            },
-                                            onColumnSelected: (col, side) {
-                                              _handleColumnButtonTap(context, provider, col);
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // ゲート選択
-                                    _buildGateSelection(context, provider, currentPlayer),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
+            backgroundColor: const Color(0xFF1A1F3A),
+            foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                tooltip: '設定',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: _openOperationOrderSettings,
               ),
             ],
           ),
+          body: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: (_) {
+              if (_isSwipeNavigating) return;
+              setState(() {
+                _horizontalDragOffset = 0;
+              });
+            },
+            onHorizontalDragUpdate: (details) {
+              if (_isSwipeNavigating) return;
+              setState(() {
+                _horizontalDragOffset += details.primaryDelta ?? 0;
+              });
+            },
+            onHorizontalDragEnd: _handleHorizontalDragEnd,
+            onHorizontalDragCancel: () {
+              if (_isSwipeNavigating) return;
+              setState(() {
+                _horizontalDragOffset = 0;
+              });
+            },
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _buildSwipePreview(challengeProgress),
+                ),
+                Transform.translate(
+                  offset: Offset(_horizontalDragOffset, 0),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF0A0E27),
+                          Color(0xFF1A1F3A),
+                        ],
+                      ),
+                    ),
+                    child: Consumer<GameProvider>(
+                      builder: (context, provider, _) {
+                        final state = provider.gameState;
+                        final currentPlayer = state.getCurrentPlayer();
+
+                        return SafeArea(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // レベル情報
+                                      _buildLevelInfo(context, state),
+
+                                      // ボード
+                                      ConstrainedBox(
+                                        key: _boardAreaKey,
+                                        constraints: BoxConstraints(
+                                          maxHeight:
+                                              constraints.maxHeight * 0.5,
+                                          maxWidth: constraints.maxWidth,
+                                        ),
+                                        child: Center(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: BoardWidget(
+                                              board: state.board,
+                                              selectedPositions:
+                                                  _selectedPositions,
+                                              highlightedPositions:
+                                                  _getAdjacentPositions(
+                                                      state.board),
+                                              lastTwoBitGatePositions: const [],
+                                              enableRowColumnButtons: true,
+                                              selectedGate: _selectedGate,
+                                              selectedRows: _selectedRow != null
+                                                  ? {_selectedRow!: true}
+                                                  : {},
+                                              selectedColumns:
+                                                  _selectedColumn != null
+                                                      ? {_selectedColumn!: true}
+                                                      : {},
+                                              onPositionTap: (position) {
+                                                _handleCellTap(
+                                                    context,
+                                                    provider,
+                                                    position.row,
+                                                    position.col);
+                                              },
+                                              onRowSelected: (row, side) {
+                                                _handleRowButtonTap(
+                                                    context, provider, row);
+                                              },
+                                              onColumnSelected: (col, side) {
+                                                _handleColumnButtonTap(
+                                                    context, provider, col);
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // ゲート選択
+                                      _buildGateSelection(
+                                          context, provider, currentPlayer),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
       ),
     );
   }
@@ -525,17 +569,14 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     final currentIndex =
         ordered.indexWhere((level) => level.level == widget.level.level);
     final targetIndex = currentIndex + direction;
-    if (currentIndex < 0 ||
-        targetIndex < 0 ||
-        targetIndex >= ordered.length) {
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
       return false;
     }
 
     final targetLevel = ordered[targetIndex];
     if (!mounted) return false;
 
-    final progressManager =
-        context.read<ChallengeProgressNotifier>().progress;
+    final progressManager = context.read<ChallengeProgressNotifier>().progress;
     if (!progressManager.isLevelUnlocked(targetLevel.level)) return false;
     // 現在レベルを背景に残し、隣接レベルへ置換（次=右から / 前=左から）
     Navigator.of(context).pushReplacement(
@@ -552,9 +593,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     final currentIndex =
         ordered.indexWhere((level) => level.level == widget.level.level);
     final targetIndex = currentIndex + direction;
-    if (currentIndex < 0 ||
-        targetIndex < 0 ||
-        targetIndex >= ordered.length) {
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
       return null;
     }
     return ordered[targetIndex];
@@ -733,9 +772,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           const SizedBox(height: 16),
           ElevatedButton(
             key: _applyGateButtonKey,
-            onPressed: _canApplyGate()
-                ? () => _applyGate(context, provider)
-                : null,
+            onPressed:
+                _canApplyGate() ? () => _applyGate(context, provider) : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               backgroundColor: _canApplyGate()
@@ -856,7 +894,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     // 使用可能なゲートをカテゴリごとに分類
     final oneBitGates = availableGates.where((g) => g.isOneBitGate).toList();
     final twoBitGates = availableGates.where((g) => g.isTwoBitGate).toList();
-    
+
     // 1ビットゲートをH, X, Y, Zの順に並べる
     final orderedOneBitGates = [
       if (oneBitGates.contains(GateType.h)) GateType.h,
@@ -864,13 +902,13 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
       if (oneBitGates.contains(GateType.y)) GateType.y,
       if (oneBitGates.contains(GateType.z)) GateType.z,
     ];
-    
+
     // 2ビットゲートをCNOT, SWAPの順に並べる
     final orderedTwoBitGates = [
       if (twoBitGates.contains(GateType.cnot)) GateType.cnot,
       if (twoBitGates.contains(GateType.swap)) GateType.swap,
     ];
-    
+
     return Column(
       children: [
         // 1行目: 1ビットゲート
@@ -925,6 +963,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   }
 
   void _handleGateSelection(GateType gate) {
+    _cellDoubleTap.reset();
+    SoundEffects.instance.gateSelect();
     setState(() {
       _selectedGate = gate;
       _entangledErrorMessage = null;
@@ -945,7 +985,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   }
 
   bool _shouldResetSelectionForOneBitGate() {
-    final isRowOrColumnSelection = _selectedRow != null || _selectedColumn != null;
+    final isRowOrColumnSelection =
+        _selectedRow != null || _selectedColumn != null;
     final isFourCellsSelection = _selectedPositions.length == 4;
     if (isRowOrColumnSelection || isFourCellsSelection) {
       return false;
@@ -960,60 +1001,86 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     int col,
   ) {
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
+      _cellDoubleTap.reset();
       setState(() {
         _entangledErrorMessage = '先にゲートを選択してください';
       });
       return;
     }
 
+    final position = Position(row, col);
+    final armed = _isDoubleTapApplyArmed(provider);
+    final decision = _cellDoubleTap.onTap(
+      position: position,
+      armed: armed,
+      canApply: _canApplyGate(),
+      selectionContainsCell: _selectedPositions.contains(position),
+      twoBitSingleCell: _selectedGate?.isTwoBitGate == true &&
+          _selectedPositions.length == 1 &&
+          _selectedPositions.first == position,
+    );
+    if (decision == CellDoubleTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
+    if (decision == CellDoubleTapDecision.ignore) {
+      return;
+    }
+
+    var accepted = false;
     setState(() {
       _entangledErrorMessage = null;
     });
 
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) {
       // 2ビットゲート選択中: 2マス選択（エンタングル駒は選択不可、隣接した駒のみ選択可能）
-      final position = Position(row, col);
       final piece = provider.gameState.board.getPiece(row, col);
       if (piece != null && piece.isEntangled) {
         // エンタングル駒は選択不可
         setState(() {
           _entangledErrorMessage = 'エンタングル駒は選択できません';
         });
-        return;
-      }
-      
-      // エラーメッセージをクリア
-      setState(() {
-        _entangledErrorMessage = null;
-      });
-      
-      if (_selectedPositions.isEmpty) {
-        // 1つ目の位置を選択
+      } else {
+        // エラーメッセージをクリア
         setState(() {
-          _selectedPositions = [position];
+          _entangledErrorMessage = null;
         });
-      } else if (_selectedPositions.length == 1) {
-        // 2つ目の位置を選択（隣接チェック）
-        final firstPosition = _selectedPositions.first;
-        if (position.isAdjacent(firstPosition)) {
-          setState(() {
-            _selectedPositions.add(position);
-          });
-        } else {
-          // 隣接していない場合は、新しい位置を1つ目として設定
+
+        if (_selectedPositions.isEmpty) {
+          SoundEffects.instance.cellSelect();
+          accepted = true;
           setState(() {
             _selectedPositions = [position];
-            _entangledErrorMessage = '隣接した駒のみ選択できます';
+          });
+        } else if (_selectedPositions.length == 1) {
+          // 2つ目の位置を選択（隣接チェック）
+          final firstPosition = _selectedPositions.first;
+          if (position.isAdjacent(firstPosition)) {
+            SoundEffects.instance.cellSelect();
+            accepted = true;
+            setState(() {
+              _selectedPositions.add(position);
+            });
+          } else {
+            // 隣接していない場合は、新しい位置を1つ目として設定
+            SoundEffects.instance.cellSelect();
+            accepted = true;
+            setState(() {
+              _selectedPositions = [position];
+              _entangledErrorMessage = '隣接した駒のみ選択できます';
+            });
+          }
+        } else if (_selectedPositions.length == 2) {
+          // 既に2マス選択済みの場合、最初の選択をクリアして新しい選択に置き換え
+          SoundEffects.instance.cellSelect();
+          accepted = true;
+          setState(() {
+            _selectedPositions = [position];
           });
         }
-      } else if (_selectedPositions.length == 2) {
-        // 既に2マス選択済みの場合、最初の選択をクリアして新しい選択に置き換え
-        setState(() {
-          _selectedPositions = [position];
-        });
+        _selectedRow = null;
+        _selectedColumn = null;
       }
-      _selectedRow = null;
-      _selectedColumn = null;
     } else {
       // 1ビットゲートまたはゲート未選択: 1マス選択で4マス自動選択（エンタングル駒が含まれる場合は選択不可）
       // 行/列選択が既にある場合はクリアして4マス選択に切り替え
@@ -1023,11 +1090,10 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           _selectedColumn = null;
         });
       }
-      
+
       // 4マス選択を自動生成
-      final position = Position(row, col);
       final fourPieces = _getFourPieces(position, provider.gameState.board);
-      
+
       // エンタングル駒が含まれているかチェック
       bool hasEntangled = false;
       for (final pos in fourPieces) {
@@ -1037,9 +1103,11 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           break;
         }
       }
-      
+
       // エンタングル駒が含まれていない場合のみ選択
       if (!hasEntangled) {
+        SoundEffects.instance.cellSelect();
+        accepted = true;
         setState(() {
           _selectedPositions = fourPieces;
           _entangledErrorMessage = null;
@@ -1050,31 +1118,35 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         });
       }
     }
+
+    if (armed) {
+      _cellDoubleTap.record(position, accepted: accepted);
+    }
   }
-  
+
   /// 4マス選択を取得（2x2の正方形）
   List<Position> _getFourPieces(Position position, Board board) {
     final positions = <Position>[];
     final row = position.row;
     final col = position.col;
-    
+
     // 仕様: そのマス、及び右に1マス、下に1マス、右下に1マスの正方4マスを選択
     // 右端/下端を選択した場合は自動補正し、そこを含む4マスの選択とする
-    
+
     // 基準位置を決定（右端/下端の場合は左/上にシフト）
     int baseRow = row;
     int baseCol = col;
-    
+
     // 右端の場合、左に1マスシフト
     if (col == board.cols - 1 && board.cols > 1) {
       baseCol = col - 1;
     }
-    
+
     // 下端の場合、上に1マスシフト
     if (row == board.rows - 1 && board.rows > 1) {
       baseRow = row - 1;
     }
-    
+
     // 4マスを選択: baseRow, baseCol とその右、下、右下
     final positionsToAdd = [
       Position(baseRow, baseCol),
@@ -1082,13 +1154,13 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
       Position(baseRow + 1, baseCol),
       Position(baseRow + 1, baseCol + 1),
     ];
-    
+
     for (final pos in positionsToAdd) {
       if (board.isValidPosition(pos.row, pos.col)) {
         positions.add(pos);
       }
     }
-    
+
     return positions;
   }
 
@@ -1097,6 +1169,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     GameProvider provider,
     int row,
   ) {
+    _cellDoubleTap.reset();
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() {
         _entangledErrorMessage = '先にゲートを選択してください';
@@ -1105,11 +1178,21 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     }
     // 2ビットゲート選択時は行選択不可
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed(provider),
+          sameSelection: _selectedRow == row,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
 
+    SoundEffects.instance.cellSelect();
     setState(() {
       _selectedRow = _selectedRow == row ? null : row;
       _selectedColumn = null;
-      
+
       if (_selectedRow != null) {
         _selectedPositions = List.generate(8, (col) => Position(row, col));
       } else {
@@ -1124,6 +1207,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     GameProvider provider,
     int col,
   ) {
+    _cellDoubleTap.reset();
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() {
         _entangledErrorMessage = '先にゲートを選択してください';
@@ -1132,11 +1216,21 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     }
     // 2ビットゲート選択時は列選択不可
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed(provider),
+          sameSelection: _selectedColumn == col,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
 
+    SoundEffects.instance.cellSelect();
     setState(() {
       _selectedColumn = _selectedColumn == col ? null : col;
       _selectedRow = null;
-      
+
       if (_selectedColumn != null) {
         _selectedPositions = List.generate(8, (row) => Position(row, col));
       } else {
@@ -1153,17 +1247,19 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     if (_selectedGate!.isTwoBitGate) {
       return _selectedPositions.length == 2;
     } else {
-      return _selectedPositions.length == 1 || 
-             _selectedPositions.length == 8 ||
-             _selectedPositions.length == 4;
+      return _selectedPositions.length == 1 ||
+          _selectedPositions.length == 8 ||
+          _selectedPositions.length == 4;
     }
   }
 
   void _applyGate(BuildContext context, GameProvider provider) async {
     if (!_canApplyGate()) return;
+    SoundEffects.instance.apply();
 
-    final success = await provider.applyGate(_selectedGate!, _selectedPositions);
-    
+    final success =
+        await provider.applyGate(_selectedGate!, _selectedPositions);
+
     if (!success) {
       setState(() {
         _entangledErrorMessage = provider.errorMessage ?? 'ゲートを適用できませんでした';
@@ -1194,11 +1290,13 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   void _resetLevel(BuildContext context, GameProvider provider) {
     // 初期状態を再作成
-    final initialGameState = _challengeService.createChallengeGameState(widget.level);
-    
+    final initialGameState =
+        _challengeService.createChallengeGameState(widget.level);
+
     // GameProviderの状態をリセット
+    _cellDoubleTap.reset();
     provider.resetToState(initialGameState);
-    
+
     // UIの選択状態もリセット
     setState(() {
       _selectedGate = null;
@@ -1215,13 +1313,19 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
     // 進捗を保存（サービス内で最新を再読込してからマージ）
     await context.read<ChallengeProgressNotifier>().completeLevel(
-      widget.level.level,
-      turnsUsed,
-      widget.level.optimalTurns,
-    );
+          widget.level.level,
+          turnsUsed,
+          widget.level.optimalTurns,
+        );
 
     if (mounted) {
       final nextLevel = await _findNextLevel();
+      if (!mounted) return;
+      if (stars >= 3) {
+        SoundEffects.instance.challengeThreeStar();
+      } else {
+        SoundEffects.instance.challengeClear();
+      }
       _showVictoryDialog(context, stars, turnsUsed, nextLevel);
     }
   }
@@ -1444,4 +1548,3 @@ class _GuideHighlightCutoutClipper extends CustomClipper<Path> {
         oldClipper.borderRadius != borderRadius;
   }
 }
-

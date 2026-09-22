@@ -2,12 +2,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/constants/game_constants.dart';
 import '../../core/quantum/qcomplex.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/board.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/position.dart';
 import '../widgets/board_widget.dart';
+import '../widgets/sound_back_button.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
 import '../widgets/study/study_text_tutorial_overlay.dart';
 import '../../domain/services/study_text_progress_service.dart';
@@ -42,7 +45,8 @@ class StudyThreeCellGroverScreen extends StatefulWidget {
       _StudyThreeCellGroverScreenState();
 }
 
-class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen> {
+class _StudyThreeCellGroverScreenState
+    extends State<StudyThreeCellGroverScreen> {
   static const double _circuitColumnWidth = 52.0;
   static const double _diffusionCircuitColumnWidth = 104.0;
 
@@ -140,8 +144,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     ),
     StudyTextTutorialStep(
       title: '探し出す答え',
-      message:
-          '今回は、8個のパラメータの中から、|111⟩状態を探し出す、という問題を解くこととします。',
+      message: '今回は、8個のパラメータの中から、|111⟩状態を探し出す、という問題を解くこととします。',
     ),
     StudyTextTutorialStep(
       title: '新たなゲート(CCZ)',
@@ -155,19 +158,16 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     ),
     StudyTextTutorialStep(
       title: '量子回路',
-      message:
-          'さて、では早速このアルゴリズムを演算していきましょう。こちらの量子回路に従って、盤面にゲートを適用させてください。',
+      message: 'さて、では早速このアルゴリズムを演算していきましょう。こちらの量子回路に従って、盤面にゲートを適用させてください。',
       nextLabel: '次へ',
     ),
     StudyTextTutorialStep(
       title: '重ね合わせの状態',
-      message:
-          '全体にHを適用することで、盤面の量子状態を重ね合わせの状態にします。',
+      message: '全体にHを適用することで、盤面の量子状態を重ね合わせの状態にします。',
     ),
     StudyTextTutorialStep(
       title: '印をつける',
-      message:
-          'CCZによって、量子回路から探したい数字に印(確率振幅の符号反転)をつけます。',
+      message: 'CCZによって、量子回路から探したい数字に印(確率振幅の符号反転)をつけます。',
     ),
     StudyTextTutorialStep(
       title: '反転する',
@@ -195,23 +195,26 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
       nextLabel: '完了',
     ),
   ];
+  late final BgmHandle _bgm;
+
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.study);
     _circuitScrollController.addListener(_handleCircuitScroll);
     _showTutorialOnFirstVisit();
   }
 
   @override
   void dispose() {
+    _bgm.release();
     _circuitScrollController.removeListener(_handleCircuitScroll);
     _circuitScrollController.dispose();
     super.dispose();
   }
 
-  List<double> get _probabilities => _amplitudes
-      .map((a) => a.normSquared().clamp(0, 1).toDouble())
-      .toList();
+  List<double> get _probabilities =>
+      _amplitudes.map((a) => a.normSquared().clamp(0, 1).toDouble()).toList();
 
   Future<void> _showTutorialOnFirstVisit() async {
     final seen = await StudyTextProgressService.hasSeen('study3');
@@ -224,6 +227,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
   }
 
   void _startTutorial() {
+    SoundEffects.instance.click();
     setState(() {
       _tutorialStepIndex = 0;
     });
@@ -356,10 +360,14 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     return base.setPiece(0, 0, p0).setPiece(0, 1, p1).setPiece(0, 2, p2);
   }
 
-  bool get _sequenceCompleted => !_sequenceFailed && _stepIndex >= _groverSteps.length;
+  bool get _sequenceCompleted =>
+      !_sequenceFailed && _stepIndex >= _groverSteps.length;
 
   bool get _canApplyGate {
-    if (_selectedGate == null || _sequenceFailed || _measured || _sequenceCompleted) {
+    if (_selectedGate == null ||
+        _sequenceFailed ||
+        _measured ||
+        _sequenceCompleted) {
       return false;
     }
     return _selectedPositions.length == 3;
@@ -396,6 +404,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
 
   void _selectGate(_Study3Gate gate) {
     if (_sequenceFailed || _measured || _sequenceCompleted) return;
+    SoundEffects.instance.gateSelect();
     final board = _displayBoard;
     final all = List<Position>.generate(board.cols, (c) => Position(0, c));
     setState(() {
@@ -440,6 +449,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
 
   void _applyGate() {
     if (!_canApplyGate) return;
+    SoundEffects.instance.apply();
     final gate = _selectedGate!;
     final next = List<QComplex>.from(_amplitudes);
     final cols = _selectedPositions.map((p) => p.col).toSet().toList()..sort();
@@ -516,8 +526,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     }
     final position = _circuitScrollController.position;
     if (!position.hasPixels) return;
-    final reachedRightEnd =
-        position.pixels >= position.maxScrollExtent - 1.0;
+    final reachedRightEnd = position.pixels >= position.maxScrollExtent - 1.0;
     if (reachedRightEnd) {
       _autoCircuitScrollEnabled = false;
     }
@@ -528,9 +537,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_circuitScrollController.hasClients) return;
       final position = _circuitScrollController.position;
-      final consumedWidth = _groverSteps
-          .take(_stepIndex)
-          .fold<double>(0.0, (sum, step) => sum + _circuitColumnWidthForStep(step));
+      final consumedWidth = _groverSteps.take(_stepIndex).fold<double>(
+          0.0, (sum, step) => sum + _circuitColumnWidthForStep(step));
       final target = consumedWidth.clamp(
         0.0,
         position.maxScrollExtent,
@@ -650,12 +658,14 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     // |+⟩ / |-⟩ は、ほぼ純粋状態かつ P(|0⟩) ≈ P(|1⟩) のときだけ表示する。
     // これにより、エンタングル後の混合状態を grayNeutral と区別できる。
     if (isPureLike && isBalanced && xExp > _xThresh) return PieceType.grayPlus;
-    if (isPureLike && isBalanced && xExp < -_xThresh) return PieceType.grayMinus;
+    if (isPureLike && isBalanced && xExp < -_xThresh)
+      return PieceType.grayMinus;
     return PieceType.grayNeutral;
   }
 
   void _measure() {
     if (!_sequenceCompleted || _measured) return;
+    SoundEffects.instance.click();
     // 手順どおり完了した場合は、表示上は約95%でも学習体験として必ず |111⟩ を出す。
     const picked = 7; // |111⟩
 
@@ -677,6 +687,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
   }
 
   void _resetAll() {
+    SoundEffects.instance.click();
     setState(() {
       _amplitudes = [
         QComplex.one,
@@ -870,8 +881,9 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                     final step = _groverSteps[i];
                     final colW = _circuitColumnWidthForStep(step);
                     final consumed = i < _stepIndex;
-                    final active =
-                        i == _stepIndex && !_sequenceCompleted && !_sequenceFailed;
+                    final active = i == _stepIndex &&
+                        !_sequenceCompleted &&
+                        !_sequenceFailed;
                     return SizedBox(
                       key: i == 1
                           ? _firstCczCircuitStepKey
@@ -924,7 +936,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
             ? null
             : () => _selectGate(gate),
         style: ElevatedButton.styleFrom(
-          backgroundColor: selected ? const Color(0xFF6B46C1) : const Color(0xFF2F3D72),
+          backgroundColor:
+              selected ? const Color(0xFF6B46C1) : const Color(0xFF2F3D72),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
@@ -942,7 +955,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
     final amps = _amplitudes.map((z) => z.re).toList();
     final board = _displayBoard;
 
-    final step = _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
+    final step =
+        _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -951,6 +965,7 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
       ),
       body: Stack(
         children: [
@@ -974,7 +989,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                   );
                   return SingleChildScrollView(
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
                       child: Column(
                         children: [
                           SizedBox(
@@ -996,18 +1012,24 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                                 labels: _basisLabels,
                                                 minY: -1,
                                                 maxY: 1,
-                                                barColor: const Color(0xFF57D6FF),
+                                                barColor:
+                                                    const Color(0xFF57D6FF),
                                                 zeroLineColor:
                                                     const Color(0xFF9AA3C1),
                                                 valueFormatter: (v) =>
                                                     v.toStringAsFixed(2),
                                               ),
-                                              if (_selectedGate == _Study3Gate.diffusion)
+                                              if (_selectedGate ==
+                                                  _Study3Gate.diffusion)
                                                 Positioned.fill(
                                                   child: IgnorePointer(
                                                     child: CustomPaint(
-                                                      painter: _AmplitudeAverageLinePainter(
-                                                        average: amps.reduce((a, b) => a + b) / amps.length,
+                                                      painter:
+                                                          _AmplitudeAverageLinePainter(
+                                                        average: amps.reduce(
+                                                                (a, b) =>
+                                                                    a + b) /
+                                                            amps.length,
                                                       ),
                                                     ),
                                                   ),
@@ -1016,152 +1038,162 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                           ),
                                         ),
                                         Positioned(
-                                                left: 0,
-                                                right: 0,
-                                                top: 0,
-                                                bottom: 0,
-                                                child: LayoutBuilder(
-                                                  builder:
-                                                      (context, constraints) {
-                                                    const leftPad = 34.0;
-                                                    const rightPad = 10.0;
-                                                    const topPad = 10.0;
-                                                    const bottomPad = 24.0;
-                                                    const barWidthRatio =
-                                                        0.52;
-                                                    const count = 8.0;
-                                                    const horizontalExpandFactor =
-                                                        2.0;
-                                                    const verticalNudge =
-                                                        12.0; // 約1文字分下へ
+                                          left: 0,
+                                          right: 0,
+                                          top: 0,
+                                          bottom: 0,
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              const leftPad = 34.0;
+                                              const rightPad = 10.0;
+                                              const topPad = 10.0;
+                                              const bottomPad = 24.0;
+                                              const barWidthRatio = 0.52;
+                                              const count = 8.0;
+                                              const horizontalExpandFactor =
+                                                  2.0;
+                                              const verticalNudge =
+                                                  12.0; // 約1文字分下へ
 
-                                                    final totalW =
-                                                        constraints.maxWidth;
-                                                    final chartW = (totalW -
-                                                            leftPad -
-                                                            rightPad)
-                                                        .clamp(0.0, totalW);
-                                                    final sectionW =
-                                                        chartW / count;
-                                                    final barW = sectionW *
-                                                        barWidthRatio;
-                                                    final lastBarLeft =
-                                                        leftPad +
-                                                            sectionW * 7 +
-                                                            (sectionW - barW) /
-                                                                2;
-                                                    final expandedW = barW *
-                                                        horizontalExpandFactor;
-                                                    final expandedLeft =
-                                                        (lastBarLeft -
-                                                                barW *
-                                                                    (horizontalExpandFactor -
-                                                                        1))
-                                                            .clamp(
-                                                              leftPad,
-                                                              leftPad +
-                                                                  chartW -
-                                                                  expandedW,
-                                                            )
-                                                            .toDouble();
-                                                    const highlightTop =
-                                                        topPad + verticalNudge;
-                                                    final highlightBottom =
-                                                        (bottomPad -
-                                                                verticalNudge)
-                                                            .clamp(
-                                                              0.0,
-                                                              constraints
-                                                                  .maxHeight,
-                                                            )
-                                                            .toDouble();
-                                                    return Stack(
-                                                      children: [
-                                                        Positioned(
-                                                          left: expandedLeft,
-                                                          width: expandedW,
-                                                          top: highlightTop,
-                                                          bottom:
-                                                              highlightBottom,
-                                                          child: Container(
-                                                            key:
-                                                                _amplitude111AreaKey,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    );
-                                                  },
-                                                ),
-                                              ),
+                                              final totalW =
+                                                  constraints.maxWidth;
+                                              final chartW =
+                                                  (totalW - leftPad - rightPad)
+                                                      .clamp(0.0, totalW);
+                                              final sectionW = chartW / count;
+                                              final barW =
+                                                  sectionW * barWidthRatio;
+                                              final lastBarLeft = leftPad +
+                                                  sectionW * 7 +
+                                                  (sectionW - barW) / 2;
+                                              final expandedW =
+                                                  barW * horizontalExpandFactor;
+                                              final expandedLeft = (lastBarLeft -
+                                                      barW *
+                                                          (horizontalExpandFactor -
+                                                              1))
+                                                  .clamp(
+                                                    leftPad,
+                                                    leftPad +
+                                                        chartW -
+                                                        expandedW,
+                                                  )
+                                                  .toDouble();
+                                              const highlightTop =
+                                                  topPad + verticalNudge;
+                                              final highlightBottom =
+                                                  (bottomPad - verticalNudge)
+                                                      .clamp(
+                                                        0.0,
+                                                        constraints.maxHeight,
+                                                      )
+                                                      .toDouble();
+                                              return Stack(
+                                                children: [
+                                                  Positioned(
+                                                    left: expandedLeft,
+                                                    width: expandedW,
+                                                    top: highlightTop,
+                                                    bottom: highlightBottom,
+                                                    child: Container(
+                                                      key: _amplitude111AreaKey,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(height: 10),
                                   Expanded(
                                     child: Stack(
-                              children: [
-                                StudyQuantumGraphCard(
-                                  title: '存在確率（0 ～ 1）',
-                                  child: StudyQuantumStateBarChart(
-                                    values: probs,
-                                    labels: _basisLabels,
-                                    minY: 0,
-                                    maxY: 1,
-                                    barColor: const Color(0xFF9C6BFF),
-                                    zeroLineColor: const Color(0xFF9AA3C1),
-                                    valueFormatter: (v) => v.toStringAsFixed(2),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      // StudyQuantumStateBarChart の描画ロジックと同じ値
-                                      const leftPad = 34.0;
-                                      const rightPad = 10.0;
-                                      const topPad = 10.0;
-                                      const bottomPad = 24.0;
-                                      const barWidthRatio = 0.52; // section * 0.52
-                                      const count = 8.0;
-                                      const horizontalExpandFactor = 2.0;
-                                      const verticalNudge = 12.0; // 約1文字分下へ
-
-                                      final totalW = constraints.maxWidth;
-                                      final chartW = (totalW - leftPad - rightPad)
-                                          .clamp(0.0, totalW);
-                                      final sectionW = chartW / count;
-                                      final barW = sectionW * barWidthRatio;
-                                      final lastBarLeft =
-                                          leftPad + sectionW * 7 + (sectionW - barW) / 2;
-                                      final expandedW = barW * horizontalExpandFactor;
-                                      final expandedLeft = (lastBarLeft -
-                                              barW * (horizontalExpandFactor - 1))
-                                          .clamp(leftPad, leftPad + chartW - expandedW)
-                                          .toDouble();
-                                      const highlightTop = topPad + verticalNudge;
-                                      final highlightBottom = (bottomPad - verticalNudge)
-                                          .clamp(0.0, constraints.maxHeight)
-                                          .toDouble();
-
-                                      return Stack(
-                                        children: [
-                                          Positioned(
-                                            left: expandedLeft,
-                                            width: expandedW,
-                                            top: highlightTop,
-                                            bottom: highlightBottom,
-                                            child: Container(key: _probability111AreaKey),
+                                      children: [
+                                        StudyQuantumGraphCard(
+                                          title: '存在確率（0 ～ 1）',
+                                          child: StudyQuantumStateBarChart(
+                                            values: probs,
+                                            labels: _basisLabels,
+                                            minY: 0,
+                                            maxY: 1,
+                                            barColor: const Color(0xFF9C6BFF),
+                                            zeroLineColor:
+                                                const Color(0xFF9AA3C1),
+                                            valueFormatter: (v) =>
+                                                v.toStringAsFixed(2),
                                           ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
+                                        ),
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          top: 0,
+                                          bottom: 0,
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              // StudyQuantumStateBarChart の描画ロジックと同じ値
+                                              const leftPad = 34.0;
+                                              const rightPad = 10.0;
+                                              const topPad = 10.0;
+                                              const bottomPad = 24.0;
+                                              const barWidthRatio =
+                                                  0.52; // section * 0.52
+                                              const count = 8.0;
+                                              const horizontalExpandFactor =
+                                                  2.0;
+                                              const verticalNudge =
+                                                  12.0; // 約1文字分下へ
+
+                                              final totalW =
+                                                  constraints.maxWidth;
+                                              final chartW =
+                                                  (totalW - leftPad - rightPad)
+                                                      .clamp(0.0, totalW);
+                                              final sectionW = chartW / count;
+                                              final barW =
+                                                  sectionW * barWidthRatio;
+                                              final lastBarLeft = leftPad +
+                                                  sectionW * 7 +
+                                                  (sectionW - barW) / 2;
+                                              final expandedW =
+                                                  barW * horizontalExpandFactor;
+                                              final expandedLeft = (lastBarLeft -
+                                                      barW *
+                                                          (horizontalExpandFactor -
+                                                              1))
+                                                  .clamp(
+                                                      leftPad,
+                                                      leftPad +
+                                                          chartW -
+                                                          expandedW)
+                                                  .toDouble();
+                                              const highlightTop =
+                                                  topPad + verticalNudge;
+                                              final highlightBottom =
+                                                  (bottomPad - verticalNudge)
+                                                      .clamp(0.0,
+                                                          constraints.maxHeight)
+                                                      .toDouble();
+
+                                              return Stack(
+                                                children: [
+                                                  Positioned(
+                                                    left: expandedLeft,
+                                                    width: expandedW,
+                                                    top: highlightTop,
+                                                    bottom: highlightBottom,
+                                                    child: Container(
+                                                        key:
+                                                            _probability111AreaKey),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1171,7 +1203,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                             width: double.infinity,
                             padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0E132B).withValues(alpha: 0.6),
+                              color: const Color(0xFF0E132B)
+                                  .withValues(alpha: 0.6),
                               border: Border(
                                 top: BorderSide(
                                   color: Colors.white.withValues(alpha: 0.12),
@@ -1189,7 +1222,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: Colors.white,
                                         side: BorderSide(
-                                          color: Colors.white.withValues(alpha: 0.45),
+                                          color: Colors.white
+                                              .withValues(alpha: 0.45),
                                         ),
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 14,
@@ -1203,7 +1237,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                 if (!_sequenceFailed && !_sequenceCompleted)
                                   Text(
                                     _hintText(),
-                                    style: const TextStyle(color: Color(0xFFDDE4FF), fontSize: 12),
+                                    style: const TextStyle(
+                                        color: Color(0xFFDDE4FF), fontSize: 12),
                                     textAlign: TextAlign.center,
                                   ),
                                 if (_message != null) ...[
@@ -1232,7 +1267,8 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                         child: BoardWidget(
                                           board: board,
                                           selectedPositions: _selectedPositions,
-                                          highlightedPositions: _getHighlightedPositions(board),
+                                          highlightedPositions:
+                                              _getHighlightedPositions(board),
                                           lastTwoBitGatePositions: const [],
                                           enableRowColumnButtons: false,
                                           showRowButtons: false,
@@ -1269,9 +1305,12 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     ElevatedButton(
-                                      onPressed: _sequenceCompleted ? _measure : (_canApplyGate ? _applyGate : null),
+                                      onPressed: _sequenceCompleted
+                                          ? _measure
+                                          : (_canApplyGate ? _applyGate : null),
                                       style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 12),
                                         backgroundColor: _sequenceCompleted
                                             ? const Color(0xFF00A86B)
                                             : const Color(0xFF4CAF50),
@@ -1289,13 +1328,17 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                     ElevatedButton(
                                       onPressed: _resetAll,
                                       style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                        backgroundColor: const Color(0xFF607D8B),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 12),
+                                        backgroundColor:
+                                            const Color(0xFF607D8B),
                                         foregroundColor: Colors.white,
                                       ),
                                       child: const Text(
                                         'リセット',
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
@@ -1334,7 +1377,9 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                               title: step.title,
                               message: step.message,
                               targetKey: _cczGateButtonKey,
-                              additionalHighlightKeys: [_firstCczCircuitStepKey],
+                              additionalHighlightKeys: [
+                                _firstCczCircuitStepKey
+                              ],
                               bubbleBottomAnchorKey: _circuitAreaKey,
                               nextLabel: step.nextLabel,
                               showNextButton: step.showNextButton,
@@ -1344,7 +1389,9 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                   title: step.title,
                                   message: step.message,
                                   targetKey: _diffusionGateButtonKey,
-                                  additionalHighlightKeys: [_firstDiffCircuitStepKey],
+                                  additionalHighlightKeys: [
+                                    _firstDiffCircuitStepKey
+                                  ],
                                   bubbleBottomAnchorKey: _circuitAreaKey,
                                   nextLabel: step.nextLabel,
                                   showNextButton: step.showNextButton,
@@ -1371,43 +1418,57 @@ class _StudyThreeCellGroverScreenState extends State<StudyThreeCellGroverScreen>
                                               message: step.message,
                                               targetKey: _amplitude111AreaKey,
                                               nextLabel: step.nextLabel,
-                                              showNextButton: step.showNextButton,
+                                              showNextButton:
+                                                  step.showNextButton,
                                             )
                                           : _tutorialStepIndex == 9
                                               ? StudyTextTutorialStep(
                                                   title: step.title,
                                                   message: step.message,
-                                                  targetKey: _amplitude111AreaKey,
+                                                  targetKey:
+                                                      _amplitude111AreaKey,
                                                   nextLabel: step.nextLabel,
-                                                  showNextButton: step.showNextButton,
+                                                  showNextButton:
+                                                      step.showNextButton,
                                                 )
-                                          : _tutorialStepIndex == 10
-                                              ? StudyTextTutorialStep(
-                                                  title: step.title,
-                                                  message: step.message,
-                                                  targetKey: _probability111AreaKey,
-                                                  nextLabel: step.nextLabel,
-                                                  showNextButton: step.showNextButton,
-                                                )
-                                          : _tutorialStepIndex == 11
-                                              ? StudyTextTutorialStep(
-                                                  title: step.title,
-                                                  message: step.message,
-                                                  targetKey: _probability111AreaKey,
-                                                  nextLabel: step.nextLabel,
-                                                  showNextButton: step.showNextButton,
-                                                )
-                                          : _tutorialStepIndex == 12
-                                              ? StudyTextTutorialStep(
-                                                  title: step.title,
-                                                  message: step.message,
-                                                  targetKey: _measurementResultKey,
-                                                  nextLabel: step.nextLabel,
-                                                  showNextButton: step.showNextButton,
-                                                  highlightExpandX: 14,
-                                                  highlightExpandY: 8,
-                                                )
-                              : step,
+                                              : _tutorialStepIndex == 10
+                                                  ? StudyTextTutorialStep(
+                                                      title: step.title,
+                                                      message: step.message,
+                                                      targetKey:
+                                                          _probability111AreaKey,
+                                                      nextLabel: step.nextLabel,
+                                                      showNextButton:
+                                                          step.showNextButton,
+                                                    )
+                                                  : _tutorialStepIndex == 11
+                                                      ? StudyTextTutorialStep(
+                                                          title: step.title,
+                                                          message: step.message,
+                                                          targetKey:
+                                                              _probability111AreaKey,
+                                                          nextLabel:
+                                                              step.nextLabel,
+                                                          showNextButton: step
+                                                              .showNextButton,
+                                                        )
+                                                      : _tutorialStepIndex == 12
+                                                          ? StudyTextTutorialStep(
+                                                              title: step.title,
+                                                              message:
+                                                                  step.message,
+                                                              targetKey:
+                                                                  _measurementResultKey,
+                                                              nextLabel: step
+                                                                  .nextLabel,
+                                                              showNextButton: step
+                                                                  .showNextButton,
+                                                              highlightExpandX:
+                                                                  14,
+                                                              highlightExpandY:
+                                                                  8,
+                                                            )
+                                                          : step,
               onNext: _advanceTutorial,
               onClose: () => _closeTutorial(markSeen: true),
             ),
@@ -1551,7 +1612,8 @@ class _GroverCircuitColumnPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    tp.paint(
+        canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
   }
 
   @override
@@ -1605,7 +1667,11 @@ class _GroverMeasureColumnPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(w / 2, y), width: 26, height: 20),
         const Radius.circular(4),
       );
-      canvas.drawRRect(rect, Paint()..color = fill..style = PaintingStyle.fill);
+      canvas.drawRRect(
+          rect,
+          Paint()
+            ..color = fill
+            ..style = PaintingStyle.fill);
       canvas.drawRRect(
         rect,
         Paint()
@@ -1694,7 +1760,8 @@ class _AmplitudeAverageLinePainter extends CustomPainter {
     const minY = -1.0;
     const maxY = 1.0;
 
-    final chartHeight = (size.height - topPad - bottomPad).clamp(0.0, size.height);
+    final chartHeight =
+        (size.height - topPad - bottomPad).clamp(0.0, size.height);
     final clampedAvg = average.clamp(minY, maxY);
     final normalized = (maxY - clampedAvg) / (maxY - minY);
     final y = topPad + chartHeight * normalized;

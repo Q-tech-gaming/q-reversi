@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/challenge_level.dart';
 import '../../domain/entities/challenge_progress.dart';
 import '../../domain/services/challenge_level_loader.dart';
 import '../providers/challenge_progress_notifier.dart';
+import '../widgets/sound_back_button.dart';
 import 'challenge_flow_scope.dart';
 import 'challenge_game_screen.dart';
 import 'challenge_stage_advance_result.dart';
@@ -79,8 +81,7 @@ class _ChallengeLevelSelectionScreenState
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leading: SoundBackButton(
           onPressed: () {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
@@ -129,7 +130,10 @@ class _ChallengeLevelSelectionScreenState
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _loadData,
+            onPressed: () {
+              SoundEffects.instance.click();
+              _loadData();
+            },
             child: const Text('再試行'),
           ),
         ],
@@ -283,7 +287,13 @@ class _ChallengeLevelSelectionScreenState
     final isHighlighted = _highlightedLevel == level.level;
 
     return GestureDetector(
-      onTap: isUnlocked ? () => _startLevel(level) : null,
+      onTap: isUnlocked
+          ? () async {
+              await SoundEffects.instance.untilClickPlaying();
+              if (!mounted) return;
+              _startLevel(level);
+            }
+          : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,

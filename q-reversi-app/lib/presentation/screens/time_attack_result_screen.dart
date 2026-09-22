@@ -5,6 +5,7 @@ import '../../data/firebase/time_attack_run_remote_service.dart';
 import '../../data/time_attack/default_time_attack_leaderboard_repository.dart';
 import '../../data/time_attack/time_attack_leaderboard_repository.dart';
 import '../../data/time_attack/time_attack_run_launcher.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/services/time_attack_local_profile_service.dart';
 import '../../domain/time_attack/time_attack_leaderboard_entry.dart';
 import '../../domain/time_attack/time_attack_run_api_models.dart';
@@ -68,6 +69,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
+    SoundEffects.instance.timeAttackFinish();
     _processResult();
   }
 
@@ -133,6 +135,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       _processing = false;
     });
 
+    if (isNewBest || (!widget.persistResult && runState.totalScore > 0)) {
+      SoundEffects.instance.bestScore();
+    }
     if (isNewBest) {
       _blinkController.repeat(reverse: true);
     }
@@ -140,6 +145,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
 
   Future<void> _retrySubmit() async {
     if (_submitting) return;
+    SoundEffects.instance.click();
     setState(() {
       _submitting = true;
       _submitError = null;
@@ -251,6 +257,8 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
 
   Future<void> _openRanking() async {
     if (_openingRanking || _retrying || _processing) return;
+    await SoundEffects.instance.untilSelectPlaying();
+    if (!mounted) return;
     setState(() => _openingRanking = true);
     try {
       await Navigator.of(context).push(
@@ -269,6 +277,8 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
 
   Future<void> _retryChallenge() async {
     if (_retrying) return;
+    await SoundEffects.instance.untilClickPlaying();
+    if (!mounted) return;
     setState(() {
       _retrying = true;
       _retryError = null;
@@ -437,7 +447,12 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                         onPressed:
                             (_retrying || _openingRanking)
                                 ? null
-                                : () => Navigator.of(context).pop(),
+                                : () async {
+                                    await SoundEffects.instance
+                                        .untilReversePlaying();
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop();
+                                  },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white70,
                           side: const BorderSide(color: Colors.white38),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/services/study_quantum_intro_tutorial_service.dart';
 import '../../domain/entities/tutorial_content.dart';
 import '../widgets/tutorial/tutorial_visual_element_widget.dart';
@@ -16,16 +18,19 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
   late PageController _pageController;
   late List<TutorialPage> _pages;
   int _currentPageIndex = 0;
+  late final BgmHandle _bgm;
 
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.study);
     _pages = StudyQuantumIntroTutorialService.getPages();
     _pageController = PageController();
   }
 
   @override
   void dispose() {
+    _bgm.release();
     _pageController.dispose();
     super.dispose();
   }
@@ -36,19 +41,23 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
     });
   }
 
-  void _nextPage() {
+  Future<void> _nextPage() async {
     if (_currentPageIndex < _pages.length - 1) {
+      SoundEffects.instance.click();
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
+      await SoundEffects.instance.untilReversePlaying();
+      if (!mounted) return;
       Navigator.pop(context);
     }
   }
 
   void _previousPage() {
     if (_currentPageIndex > 0) {
+      SoundEffects.instance.click();
       _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -72,7 +81,11 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            await SoundEffects.instance.untilReversePlaying();
+            if (!context.mounted) return;
+            Navigator.pop(context);
+          },
         ),
       ),
       body: SafeArea(
@@ -200,7 +213,12 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await SoundEffects.instance.untilReversePlaying();
+              if (!context.mounted) return;
+              navigator.pop();
+            },
             child: const Text(
               'スキップ',
               style: TextStyle(color: Colors.white70),

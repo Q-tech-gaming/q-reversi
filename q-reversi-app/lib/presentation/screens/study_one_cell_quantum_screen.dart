@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../core/quantum/qcomplex.dart';
 import '../../core/quantum/study_quantum_gauge.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/piece_type.dart';
@@ -11,6 +13,7 @@ import '../widgets/study/bloch_sphere_widget.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
 import '../widgets/study/study_text_tutorial_overlay.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/sound_back_button.dart';
 import '../../domain/services/study_text_progress_service.dart';
 
 /// スタディ1: 1マスで学ぶ量子コンピュータ
@@ -54,15 +57,16 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
   bool _waitingGateApply = false;
   bool _waitingAmplitudeTabTap = false;
   late final List<StudyTextTutorialStep> _tutorialSteps;
+  late final BgmHandle _bgm;
 
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.study);
     _tutorialSteps = [
       const StudyTextTutorialStep(
         title: '1マスで学ぶ量子コンピュータ',
-        message:
-            'このページでは、1量子ビットに対応する1マス盤面に対して、ブロッホ球と確率振幅グラフを用いて量子状態を直感的に学びます。',
+        message: 'このページでは、1量子ビットに対応する1マス盤面に対して、ブロッホ球と確率振幅グラフを用いて量子状態を直感的に学びます。',
       ),
       StudyTextTutorialStep(
         title: 'ブロッホ球',
@@ -106,8 +110,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
     _rotationController = AnimationController(
       vsync: this,
       duration: _rotationDuration,
-    )
-      ..addStatusListener((status) {
+    )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           setState(() {
             _pieceType = _targetPieceType ?? _pieceType;
@@ -131,6 +134,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
 
   @override
   void dispose() {
+    _bgm.release();
     _upperTabController.dispose();
     _rotationController.dispose();
     super.dispose();
@@ -154,6 +158,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
 
   void _onSelectGate(GateType gate) {
     if (_isAnimating) return;
+    SoundEffects.instance.gateSelect();
     setState(() {
       _selectedGate = gate;
     });
@@ -162,6 +167,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
   Future<void> _applySelectedGate() async {
     final gate = _selectedGate;
     if (gate == null || _isAnimating) return;
+    SoundEffects.instance.apply();
 
     final target = _applyOneBitGate(_pieceType, gate);
     setState(() {
@@ -193,6 +199,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
   }
 
   void _startTutorial({required bool autoMode}) {
+    if (!autoMode) SoundEffects.instance.click();
     final startIndex = (!autoMode && _upperTabController.index == 1) ? 4 : 0;
     setState(() {
       _isTutorialAutoMode = autoMode;
@@ -488,7 +495,8 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
     final highlightedAxisLine = _gateToLineHighlightAxis(_effectiveGate);
 
     final tutorialIndex = _tutorialStepIndex;
-    final currentStep = tutorialIndex == null ? null : _tutorialSteps[tutorialIndex];
+    final currentStep =
+        tutorialIndex == null ? null : _tutorialSteps[tutorialIndex];
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -497,6 +505,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
       ),
       body: Stack(
         children: [
@@ -518,74 +527,81 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                     child: Container(
                       key: _upperHalfAreaKey,
                       child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                      child: Column(
-                        children: [
-                          TabBar(
-                            controller: _upperTabController,
-                            labelColor: Colors.white,
-                            unselectedLabelColor: Colors.white54,
-                            indicatorColor: const Color(0xFF9C6BFF),
-                            tabs: [
-                              const Tab(text: 'ブロッホ球'),
-                              Tab(
-                                key: _amplitudeTabKey,
-                                text: '確率振幅',
-                              ),
-                            ],
-                          ),
-                          Expanded(
-                            child: TabBarView(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                        child: Column(
+                          children: [
+                            TabBar(
                               controller: _upperTabController,
-                              physics: const NeverScrollableScrollPhysics(),
-                              children: [
-                                LayoutBuilder(
-                                  key: _blochAreaKey,
-                                  builder: (context, constraints) {
-                                    final sphereFromHeight = constraints.maxHeight * 0.92;
-                                    final sphereSide = sphereFromHeight <=
-                                            constraints.maxWidth * 0.95
-                                        ? sphereFromHeight
-                                        : constraints.maxWidth * 0.95;
-                                    return AnimatedBuilder(
-                                      animation: _rotationController,
-                                      builder: (context, _) {
-                                        return Center(
-                                          child: SizedBox(
-                                            width: sphereSide,
-                                            height: sphereSide,
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onHorizontalDragUpdate: (details) {
-                                                _onHorizontalDrag(details.delta.dx);
-                                              },
-                                              child: BlochSphereWidget(
-                                                startVector: _displayVector,
-                                                endVector: _displayVector,
-                                                progress: 0,
-                                                highlightedAxisLine: highlightedAxisLine,
-                                                highlightedAxisLabel: highlightedAxisLabel,
-                                                yaw: _yaw,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                                AnimatedBuilder(
-                                  animation: _rotationController,
-                                  builder: (context, _) {
-                                    return _buildAmplitudeGraphTab(_displayVector);
-                                  },
+                              labelColor: Colors.white,
+                              unselectedLabelColor: Colors.white54,
+                              indicatorColor: const Color(0xFF9C6BFF),
+                              tabs: [
+                                const Tab(text: 'ブロッホ球'),
+                                Tab(
+                                  key: _amplitudeTabKey,
+                                  text: '確率振幅',
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              child: TabBarView(
+                                controller: _upperTabController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                children: [
+                                  LayoutBuilder(
+                                    key: _blochAreaKey,
+                                    builder: (context, constraints) {
+                                      final sphereFromHeight =
+                                          constraints.maxHeight * 0.92;
+                                      final sphereSide = sphereFromHeight <=
+                                              constraints.maxWidth * 0.95
+                                          ? sphereFromHeight
+                                          : constraints.maxWidth * 0.95;
+                                      return AnimatedBuilder(
+                                        animation: _rotationController,
+                                        builder: (context, _) {
+                                          return Center(
+                                            child: SizedBox(
+                                              width: sphereSide,
+                                              height: sphereSide,
+                                              child: GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onHorizontalDragUpdate:
+                                                    (details) {
+                                                  _onHorizontalDrag(
+                                                      details.delta.dx);
+                                                },
+                                                child: BlochSphereWidget(
+                                                  startVector: _displayVector,
+                                                  endVector: _displayVector,
+                                                  progress: 0,
+                                                  highlightedAxisLine:
+                                                      highlightedAxisLine,
+                                                  highlightedAxisLabel:
+                                                      highlightedAxisLabel,
+                                                  yaw: _yaw,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                                  AnimatedBuilder(
+                                    animation: _rotationController,
+                                    builder: (context, _) {
+                                      return _buildAmplitudeGraphTab(
+                                          _displayVector);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                     ),
                   ),
                   Expanded(
@@ -602,102 +618,108 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                         ),
                       ),
                       child: LayoutBuilder(
-                        builder: (context, constraints) => SingleChildScrollView(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight),
                             child: Column(
                               children: [
-                          Row(
-                            children: [
-                              const Spacer(),
-                              OutlinedButton(
-                                onPressed: () => _startTutorial(autoMode: false),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.45),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
+                                Row(
+                                  children: [
+                                    const Spacer(),
+                                    OutlinedButton(
+                                      onPressed: () =>
+                                          _startTutorial(autoMode: false),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.45),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      child: const Text('テキスト'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '現在の状態: ${_stateLabel(_pieceType)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                child: const Text('テキスト'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '現在の状態: ${_stateLabel(_pieceType)}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: 96,
-                            height: 96,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2E7D32),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: const Color(0xFF5BAE62),
-                                width: 2,
-                              ),
-                            ),
-                            child: Center(
-                              child: PieceWidget(
-                                piece: piece,
-                                size: 72,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _oneBitGates.map((gate) {
-                              final isSelected = _selectedGate == gate;
-                              return SizedBox(
-                                width: 60,
-                                child: GateButton(
-                                  gate: gate,
-                                  isEnabled: !_isAnimating,
-                                  isSelected: isSelected,
-                                  onTap: () {
-                                    _onSelectGate(gate);
-                                  },
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: 96,
+                                  height: 96,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2E7D32),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: const Color(0xFF5BAE62),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: PieceWidget(
+                                      piece: piece,
+                                      size: 72,
+                                    ),
+                                  ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: (_selectedGate == null || _isAnimating)
-                                ? null
-                                : _applySelectedGate,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                              backgroundColor: (_selectedGate == null || _isAnimating)
-                                  ? Colors.grey.shade700
-                                  : const Color(0xFF4CAF50),
-                              foregroundColor: Colors.white,
-                            ),
-                            child: Text(
-                              _isAnimating ? '適用中...' : 'ゲートを適用',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                                const SizedBox(height: 18),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _oneBitGates.map((gate) {
+                                    final isSelected = _selectedGate == gate;
+                                    return SizedBox(
+                                      width: 60,
+                                      child: GateButton(
+                                        gate: gate,
+                                        isEnabled: !_isAnimating,
+                                        isSelected: isSelected,
+                                        onTap: () {
+                                          _onSelectGate(gate);
+                                        },
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton(
+                                  onPressed:
+                                      (_selectedGate == null || _isAnimating)
+                                          ? null
+                                          : _applySelectedGate,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                    backgroundColor:
+                                        (_selectedGate == null || _isAnimating)
+                                            ? Colors.grey.shade700
+                                            : const Color(0xFF4CAF50),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: Text(
+                                    _isAnimating ? '適用中...' : 'ゲートを適用',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),

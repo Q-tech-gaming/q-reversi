@@ -8,10 +8,13 @@ import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/position.dart';
 import '../../domain/services/challenge_game_service.dart';
 import '../../domain/services/operation_order_preference_service.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/time_attack/time_attack_config.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
 import '../providers/game_provider.dart';
 import '../providers/time_attack_provider.dart';
+import '../input/cell_double_tap_apply.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/gate_button.dart';
 import 'time_attack_result_screen.dart';
@@ -44,12 +47,16 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   int? _selectedColumn;
   String? _errorMessage;
   bool _allowFreeSelectionOrder = false;
+  bool _doubleTapApplyEnabled = false;
+  final _cellDoubleTap = CellDoubleTapApplyController();
   bool _handlingClear = false;
   bool _navigatedToResult = false;
+  late final BgmHandle _bgm;
 
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.timeAttack);
     WidgetsBinding.instance.addObserver(this);
     _taProvider = TimeAttackProvider(widget.sequence);
     _gameProvider = GameProvider(
@@ -67,8 +74,20 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
 
   Future<void> _loadOperationOrderPreference() async {
     final allowFree = await _operationOrderPrefs.isFreeSelectionOrderEnabled();
+    final doubleTapApply = await _operationOrderPrefs.isDoubleTapApplyEnabled();
     if (!mounted) return;
-    setState(() => _allowFreeSelectionOrder = allowFree);
+    setState(() {
+      _allowFreeSelectionOrder = allowFree;
+      _doubleTapApplyEnabled = doubleTapApply;
+    });
+  }
+
+  bool get _isDoubleTapApplyArmed {
+    return _doubleTapApplyEnabled &&
+        _selectedGate != null &&
+        _taProvider.state.canInteract &&
+        !_handlingClear &&
+        !_gameProvider.isProcessing;
   }
 
   void _onTaChanged() {
@@ -89,6 +108,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
 
   @override
   void dispose() {
+    _bgm.release();
     _taProvider.removeListener(_onTaChanged);
     WidgetsBinding.instance.removeObserver(this);
     _taProvider.dispose();
@@ -97,6 +117,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   void _clearSelection() {
+    _cellDoubleTap.reset();
     setState(() {
       _selectedGate = null;
       _selectedPositions = [];
@@ -303,13 +324,13 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     final ta = _taProvider.state;
     if (!ta.canInteract || _handlingClear) return;
     if (!_canApplyGate()) return;
+    SoundEffects.instance.apply();
 
     final success =
         await _gameProvider.applyGate(_selectedGate!, _selectedPositions);
     if (!success) {
       setState(() {
-        _errorMessage =
-            _gameProvider.errorMessage ?? 'ゲートを適用できませんでした';
+        _errorMessage = _gameProvider.errorMessage ?? 'ゲートを適用できませんでした';
       });
       return;
     }
@@ -401,69 +422,110 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   void _handleCellTap(int row, int col) {
-    if (!_taProvider.state.canInteract) return;
+    if (!_taProvider.state.canInteract || _handlingClear) {
+      _cellDoubleTap.reset();
+      return;
+    }
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
+      _cellDoubleTap.reset();
       setState(() => _errorMessage = '先にゲートを選択してください');
       return;
     }
 
+    final position = Position(row, col);
+    final armed = _isDoubleTapApplyArmed;
+    final decision = _cellDoubleTap.onTap(
+      position: position,
+      armed: armed,
+      canApply: _canApplyGate(),
+      selectionContainsCell: _selectedPositions.contains(position),
+      twoBitSingleCell: _selectedGate?.isTwoBitGate == true &&
+          _selectedPositions.length == 1 &&
+          _selectedPositions.first == position,
+    );
+    if (decision == CellDoubleTapDecision.apply) {
+      _applyGate();
+      return;
+    }
+    if (decision == CellDoubleTapDecision.ignore) {
+      return;
+    }
+
+    var accepted = false;
     setState(() => _errorMessage = null);
     final board = _gameProvider.gameState.board;
 
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) {
-      final position = Position(row, col);
       final piece = board.getPiece(row, col);
       if (piece != null && piece.isEntangled) {
         setState(() => _errorMessage = 'エンタングル駒は選択できません');
-        return;
-      }
-      setState(() {
-        if (_selectedPositions.isEmpty) {
-          _selectedPositions = [position];
-        } else if (_selectedPositions.length == 1) {
-          if (position.isAdjacent(_selectedPositions.first)) {
-            _selectedPositions = [..._selectedPositions, position];
+      } else {
+        SoundEffects.instance.cellSelect();
+        accepted = true;
+        setState(() {
+          if (_selectedPositions.isEmpty) {
+            _selectedPositions = [position];
+          } else if (_selectedPositions.length == 1) {
+            if (position.isAdjacent(_selectedPositions.first)) {
+              _selectedPositions = [..._selectedPositions, position];
+            } else {
+              _selectedPositions = [position];
+              _errorMessage = '隣接した駒のみ選択できます';
+            }
           } else {
             _selectedPositions = [position];
-            _errorMessage = '隣接した駒のみ選択できます';
           }
-        } else {
-          _selectedPositions = [position];
-        }
+          _selectedRow = null;
+          _selectedColumn = null;
+        });
+      }
+    } else {
+      setState(() {
         _selectedRow = null;
         _selectedColumn = null;
+        final four = _getFourPieces(position, board);
+        var hasEntangled = false;
+        for (final p in four) {
+          final piece = board.getPiece(p.row, p.col);
+          if (piece != null && piece.isEntangled) {
+            hasEntangled = true;
+            break;
+          }
+        }
+        if (hasEntangled) {
+          _errorMessage = 'エンタングル駒を含む範囲は選択できません';
+          _selectedPositions = [];
+        } else {
+          SoundEffects.instance.cellSelect();
+          accepted = true;
+          _selectedPositions = four;
+        }
       });
-      return;
     }
 
-    setState(() {
-      _selectedRow = null;
-      _selectedColumn = null;
-      final four = _getFourPieces(Position(row, col), board);
-      var hasEntangled = false;
-      for (final p in four) {
-        final piece = board.getPiece(p.row, p.col);
-        if (piece != null && piece.isEntangled) {
-          hasEntangled = true;
-          break;
-        }
-      }
-      if (hasEntangled) {
-        _errorMessage = 'エンタングル駒を含む範囲は選択できません';
-        _selectedPositions = [];
-      } else {
-        _selectedPositions = four;
-      }
-    });
+    if (armed) {
+      _cellDoubleTap.record(position, accepted: accepted);
+    }
   }
 
   void _handleRowButtonTap(int row) {
+    _cellDoubleTap.reset();
     if (!_taProvider.state.canInteract) return;
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() => _errorMessage = '先にゲートを選択してください');
       return;
     }
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed,
+          sameSelection: _selectedRow == row,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate();
+      return;
+    }
+    SoundEffects.instance.cellSelect();
     setState(() {
       _selectedRow = _selectedRow == row ? null : row;
       _selectedColumn = null;
@@ -475,12 +537,23 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   void _handleColumnButtonTap(int col) {
+    _cellDoubleTap.reset();
     if (!_taProvider.state.canInteract) return;
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() => _errorMessage = '先にゲートを選択してください');
       return;
     }
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed,
+          sameSelection: _selectedColumn == col,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate();
+      return;
+    }
+    SoundEffects.instance.cellSelect();
     setState(() {
       _selectedColumn = _selectedColumn == col ? null : col;
       _selectedRow = null;
@@ -492,7 +565,9 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   void _selectGate(GateType gate) {
+    _cellDoubleTap.reset();
     if (!_taProvider.state.canInteract) return;
+    SoundEffects.instance.gateSelect();
     setState(() {
       final changing = _selectedGate != gate;
       _selectedGate = gate;
@@ -565,7 +640,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                               BoxConstraints(minHeight: constraints.maxHeight),
                           child: Column(
                             children: [
-                              _buildHud(run, boardState.turnCount, level.optimalTurns),
+                              _buildHud(run, boardState.turnCount,
+                                  level.optimalTurns),
                               const SizedBox(height: 8),
                               Text(
                                 'ゴール: ${level.victoryCondition.displayName}',
@@ -624,7 +700,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                                 const SizedBox(height: 8),
                                 Text(
                                   _errorMessage!,
-                                  style: const TextStyle(color: Colors.redAccent),
+                                  style:
+                                      const TextStyle(color: Colors.redAccent),
                                 ),
                               ],
                               const SizedBox(height: 12),
@@ -650,8 +727,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                               ),
                               const SizedBox(height: 8),
                               ElevatedButton(
-                                onPressed:
-                                    run.canInteract ? _resetLevel : null,
+                                onPressed: run.canInteract ? _resetLevel : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.grey.shade700,
                                   foregroundColor: Colors.white,
@@ -718,9 +794,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
             child: _hudCell(
               'COMBO',
               '×${run.comboStreak}',
-              valueColor: run.comboStreak > 0
-                  ? const Color(0xFFB794F4)
-                  : Colors.white,
+              valueColor:
+                  run.comboStreak > 0 ? const Color(0xFFB794F4) : Colors.white,
             ),
           ),
         ],
@@ -731,7 +806,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   Widget _hudCell(String label, String value, {Color? valueColor}) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        Text(label,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
         const SizedBox(height: 2),
         Text(
           value,
@@ -765,7 +841,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
             children: oneBit
                 .map(
                   (gate) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     child: SizedBox(
                       width: 60,
                       child: GateButton(
@@ -786,7 +863,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
             children: twoBit
                 .map(
                   (gate) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     child: SizedBox(
                       width: 60,
                       child: GateButton(
@@ -805,6 +883,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   Future<void> _confirmExit(BuildContext context) async {
+    SoundEffects.instance.reverse();
     final leave = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -816,11 +895,17 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, false);
+            },
             child: const Text('キャンセル'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, true);
+            },
             child: const Text('終了'),
           ),
         ],

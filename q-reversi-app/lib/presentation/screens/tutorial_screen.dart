@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/services/tutorial_service.dart';
 import '../../domain/services/tutorial_progress_service.dart';
 import '../../domain/entities/tutorial_content.dart';
@@ -20,16 +22,19 @@ class _TutorialScreenState extends State<TutorialScreen> {
   late List<TutorialPage> _pages;
   int _currentPageIndex = 0;
   final TutorialProgressService _progressService = TutorialProgressService();
+  late final BgmHandle _bgm;
 
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.study);
     _pages = TutorialService.getFullTutorial();
     _pageController = PageController();
   }
 
   @override
   void dispose() {
+    _bgm.release();
     _pageController.dispose();
     super.dispose();
   }
@@ -42,11 +47,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   void _nextPage() async {
     if (_currentPageIndex < _pages.length - 1) {
+      SoundEffects.instance.click();
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
+      SoundEffects.instance.reverse();
       // 最後のページの場合は終了し、完了をマーク
       await _progressService.markTutorialCompleted();
       if (!mounted) return;
@@ -56,25 +63,28 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   void _previousPage() {
     if (_currentPageIndex > 0) {
+      SoundEffects.instance.click();
       _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     }
   }
-  
+
   bool get _isFirstPage => _currentPageIndex == 0;
   bool get _isLastPage => _currentPageIndex == _pages.length - 1;
   bool get _isGateMasteryPage =>
       _pages[_currentPageIndex].pageId == 'gate_mastery_complete';
 
   Future<void> _goHome() async {
+    await SoundEffects.instance.untilReversePlaying();
     await _progressService.markTutorialCompleted();
     if (!mounted) return;
     Navigator.pop(context);
   }
 
   Future<void> _goToChallenge() async {
+    await SoundEffects.instance.untilSelectPlaying();
     await _progressService.markTutorialCompleted();
     if (!mounted) return;
     Navigator.pop(context, TutorialScreen.resultOpenChallenge);
@@ -94,8 +104,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () async {
+            await SoundEffects.instance.untilReversePlaying();
             // スキップをマーク
             await _progressService.markTutorialSkipped();
+            if (!context.mounted) return;
             Navigator.pop(context);
           },
         ),
@@ -106,7 +118,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           children: [
             // 進捗表示
             _buildProgressIndicator(),
-            
+
             // ページコンテンツ
             Expanded(
               child: PageView.builder(
@@ -119,7 +131,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 },
               ),
             ),
-            
+
             // ナビゲーションボタン
             _buildNavigationButtons(),
           ],
@@ -178,20 +190,20 @@ class _TutorialScreenState extends State<TutorialScreen> {
             children: [
               // テキスト
               ...slide.texts.map((text) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    height: 1.6,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )),
-              
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.6,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )),
+
               const SizedBox(height: 16),
-              
+
               // 視覚要素（残りのスペースを使用）
               if (slide.visualElement != null)
                 Expanded(
@@ -280,9 +292,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           TextButton(
-            onPressed: _isFirstPage
-                ? null
-                : _previousPage,
+            onPressed: _isFirstPage ? null : _previousPage,
             child: const Text(
               '前へ',
               style: TextStyle(color: Colors.white70),
@@ -299,6 +309,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           else
             TextButton(
               onPressed: () async {
+                await SoundEffects.instance.untilReversePlaying();
                 // スキップをマーク
                 await _progressService.markTutorialSkipped();
                 if (!mounted) return;
@@ -334,4 +345,3 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 }
-

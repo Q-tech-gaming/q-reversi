@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/quantum/qcomplex.dart';
 import '../../core/quantum/study_quantum_gauge.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/board.dart';
 import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/piece.dart';
@@ -9,6 +11,7 @@ import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/position.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/sound_back_button.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
 import '../widgets/study/study_text_tutorial_overlay.dart';
 import '../../domain/services/study_text_progress_service.dart';
@@ -139,8 +142,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   final List<StudyTextTutorialStep> _tutorialSteps = const [
     StudyTextTutorialStep(
       title: '2マスで学ぶ量子コンピュータ',
-      message:
-          'このページでは、2量子ビットの状態を確率振幅と存在確率で体験します。',
+      message: 'このページでは、2量子ビットの状態を確率振幅と存在確率で体験します。',
     ),
     StudyTextTutorialStep(
       title: '2量子ビットの表現',
@@ -155,15 +157,23 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
     ),
   ];
 
+  late final BgmHandle _bgm;
+
   @override
   void initState() {
     super.initState();
+    _bgm = BgmHandle.hold(Bgm.study);
     _showTutorialOnFirstVisit();
   }
 
-  List<double> get _probabilities => _amplitudes
-      .map((a) => a.normSquared().clamp(0, 1).toDouble())
-      .toList();
+  @override
+  void dispose() {
+    _bgm.release();
+    super.dispose();
+  }
+
+  List<double> get _probabilities =>
+      _amplitudes.map((a) => a.normSquared().clamp(0, 1).toDouble()).toList();
 
   Future<void> _showTutorialOnFirstVisit() async {
     final seen = await StudyTextProgressService.hasSeen('study2');
@@ -176,6 +186,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   }
 
   void _startTutorial() {
+    SoundEffects.instance.click();
     setState(() {
       _tutorialStepIndex = 0;
     });
@@ -219,6 +230,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   }
 
   void _handleGateSelection(GateType gate) {
+    SoundEffects.instance.gateSelect();
     setState(() {
       _selectedGate = gate;
       _entangledErrorMessage = null;
@@ -232,6 +244,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   }
 
   void _handlePositionTap(Position position) {
+    SoundEffects.instance.cellSelect();
     setState(() {
       if (_selectedGate != null && _selectedGate!.isTwoBitGate) {
         _entangledErrorMessage = null;
@@ -265,6 +278,8 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   }
 
   void _handleRowSelection(int row, String direction) {
+    if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
+    SoundEffects.instance.cellSelect();
     setState(() {
       if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
 
@@ -365,6 +380,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
     final board = _displayBoard;
     final targets = _resolveTargetPositions(board);
     if (targets == null || targets.isEmpty) return;
+    SoundEffects.instance.apply();
 
     final next = List<QComplex>.from(_amplitudes);
 
@@ -485,6 +501,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   }
 
   void _resetStudyState() {
+    SoundEffects.instance.click();
     setState(() {
       _amplitudes = [
         QComplex.one,
@@ -518,7 +535,8 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
     final amps = gaugeAmp.map((z) => z.re).toList();
     final board = _displayBoard;
 
-    final step = _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
+    final step =
+        _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -527,6 +545,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
       ),
       body: Stack(
         children: [
@@ -598,158 +617,164 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                         ),
                       ),
                       child: LayoutBuilder(
-                        builder: (context, constraints) => SingleChildScrollView(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight),
                             child: Column(
                               children: [
-                          Row(
-                            children: [
-                              const Spacer(),
-                              OutlinedButton(
-                                onPressed: _startTutorial,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.45),
+                                Row(
+                                  children: [
+                                    const Spacer(),
+                                    OutlinedButton(
+                                      onPressed: _startTutorial,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.45),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      child: const Text('テキスト'),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  _gateHintText(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFDDE4FF),
+                                    fontSize: 12,
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (_entangledErrorMessage != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _entangledErrorMessage!,
+                                    style: TextStyle(
+                                      color: Colors.orange.shade200,
+                                      fontSize: 12,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                ),
-                                child: const Text('テキスト'),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            _gateHintText(),
-                            style: const TextStyle(
-                              color: Color(0xFFDDE4FF),
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (_entangledErrorMessage != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              _entangledErrorMessage!,
-                              style: TextStyle(
-                                color: Colors.orange.shade200,
-                                fontSize: 12,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Container(
-                            key: _boardAreaKey,
-                            child: Center(
-                              child: BoardWidget(
-                                board: board,
-                                selectedPositions: _selectedPositions,
-                                highlightedPositions:
-                                    _getAdjacentPositions(board),
-                                lastTwoBitGatePositions: const [],
-                                enableRowColumnButtons: true,
-                                showColumnButtons: false,
-                                selectedGate: _selectedGate,
-                                selectedRows: _selectedRow != null
-                                    ? {_selectedRow!: true}
-                                    : null,
-                                cellSize: 54,
-                                onPositionTap: _handlePositionTap,
-                                onRowSelected: _handleRowSelection,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              GateType.x,
-                              GateType.h,
-                              GateType.y,
-                              GateType.z
-                            ].map((gate) {
-                              return SizedBox(
-                                width: 74,
-                                child: GateButton(
-                                  gate: gate,
-                                  isEnabled: true,
-                                  isSelected: _selectedGate == gate,
-                                  centerTwoBitLabel: true,
-                                  onTap: () => _handleGateSelection(gate),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [GateType.cnot, GateType.swap].map((gate) {
-                              return SizedBox(
-                                width: 86,
-                                child: GateButton(
-                                  gate: gate,
-                                  isEnabled: true,
-                                  isSelected: _selectedGate == gate,
-                                  centerTwoBitLabel: true,
-                                  onTap: () => _handleGateSelection(gate),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 12,
-                            runSpacing: 8,
-                            children: [
-                              ElevatedButton(
-                                onPressed: _canApplyGate() ? _applyGate : null,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 14,
-                                  ),
-                                  backgroundColor: !_canApplyGate()
-                                      ? Colors.grey.shade700
-                                      : const Color(0xFF4CAF50),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text(
-                                  'ゲートを適用',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                ],
+                                const SizedBox(height: 8),
+                                Container(
+                                  key: _boardAreaKey,
+                                  child: Center(
+                                    child: BoardWidget(
+                                      board: board,
+                                      selectedPositions: _selectedPositions,
+                                      highlightedPositions:
+                                          _getAdjacentPositions(board),
+                                      lastTwoBitGatePositions: const [],
+                                      enableRowColumnButtons: true,
+                                      showColumnButtons: false,
+                                      selectedGate: _selectedGate,
+                                      selectedRows: _selectedRow != null
+                                          ? {_selectedRow!: true}
+                                          : null,
+                                      cellSize: 54,
+                                      onPositionTap: _handlePositionTap,
+                                      onRowSelected: _handleRowSelection,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              ElevatedButton(
-                                onPressed: _resetStudyState,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  backgroundColor: const Color(0xFF607D8B),
-                                  foregroundColor: Colors.white,
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    GateType.x,
+                                    GateType.h,
+                                    GateType.y,
+                                    GateType.z
+                                  ].map((gate) {
+                                    return SizedBox(
+                                      width: 74,
+                                      child: GateButton(
+                                        gate: gate,
+                                        isEnabled: true,
+                                        isSelected: _selectedGate == gate,
+                                        centerTwoBitLabel: true,
+                                        onTap: () => _handleGateSelection(gate),
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
-                                child: const Text(
-                                  'リセット',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [GateType.cnot, GateType.swap]
+                                      .map((gate) {
+                                    return SizedBox(
+                                      width: 86,
+                                      child: GateButton(
+                                        gate: gate,
+                                        isEnabled: true,
+                                        isSelected: _selectedGate == gate,
+                                        centerTwoBitLabel: true,
+                                        onTap: () => _handleGateSelection(gate),
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 12,
+                                  runSpacing: 8,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed:
+                                          _canApplyGate() ? _applyGate : null,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 14,
+                                        ),
+                                        backgroundColor: !_canApplyGate()
+                                            ? Colors.grey.shade700
+                                            : const Color(0xFF4CAF50),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text(
+                                        'ゲートを適用',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: _resetStudyState,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 12,
+                                        ),
+                                        backgroundColor:
+                                            const Color(0xFF607D8B),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text(
+                                        'リセット',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -779,7 +804,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                           nextLabel: step.nextLabel,
                           showNextButton: step.showNextButton,
                         )
-                  : step,
+                      : step,
               onNext: _advanceTutorial,
               onClose: () => _closeTutorial(markSeen: true),
             ),

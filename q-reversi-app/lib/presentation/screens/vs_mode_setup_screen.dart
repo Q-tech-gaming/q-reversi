@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/vs_game_persistence_service.dart';
 import '../../domain/entities/game_mode.dart';
 import '../../core/constants/game_constants.dart';
+import '../../core/sound_effects.dart';
 import 'game_screen.dart';
 import '../../domain/entities/game_state.dart';
 import '../../domain/entities/board.dart';
@@ -9,6 +10,7 @@ import '../../domain/entities/player.dart';
 import '../../domain/services/game_service.dart';
 import '../../domain/services/vs_cpu_progress_service.dart';
 import '../../data/firebase/backend_warmup.dart';
+import '../widgets/sound_back_button.dart';
 import 'vs_quantum_leaderboard_screen.dart';
 
 /// VSモード設定画面
@@ -371,6 +373,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                     onChanged: unlocked
                         ? (value) {
                             if (value != null) {
+                              SoundEffects.instance.click();
                               setState(() => _aiDifficulty = value);
                             }
                           }
@@ -404,6 +407,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -437,6 +441,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                 value: VsMode.cpu,
                 groupValue: _vsMode,
                 onChanged: (value) {
+                  SoundEffects.instance.click();
                   setState(() => _vsMode = value!);
                 },
               ),
@@ -472,6 +477,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                 groupValue: _vsMode,
                 onChanged: _humanModeUnlocked
                     ? (value) {
+                        SoundEffects.instance.click();
                         setState(() => _vsMode = value!);
                       }
                     : null,
@@ -545,6 +551,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                       value != GameConstants.defaultVsModeTurns) {
                     return;
                   }
+                  SoundEffects.instance.click();
                   setState(() => _maxTurns = value);
                 },
               ),
@@ -604,6 +611,8 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
 
   Future<void> _openRanking() async {
     if (_openingRanking) return;
+    await SoundEffects.instance.untilSelectPlaying();
+    if (!mounted) return;
     setState(() => _openingRanking = true);
     try {
       await Navigator.of(context).push(
@@ -621,6 +630,8 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
   }
 
   Future<void> _startGame(BuildContext context) async {
+    await SoundEffects.instance.untilClickPlaying();
+    if (!context.mounted) return;
     final vsMode = _humanModeUnlocked ? _vsMode : VsMode.cpu;
     final maxTurns = _turnOptionsUnlocked
         ? _maxTurns

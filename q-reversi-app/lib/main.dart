@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'core/app_navigator.dart';
+import 'core/background_music.dart';
+import 'core/sound_effects.dart';
 import 'data/firebase/firebase_bootstrap.dart';
 import 'data/firebase/time_attack_pending_submit_retry.dart';
 import 'presentation/screens/home_screen.dart';
@@ -17,6 +19,16 @@ Future<void> main() async {
     unawaited(TimeAttackPendingSubmitRetry().tryFlush());
   } catch (e, st) {
     debugPrint('Firebase 初期化に失敗しました: $e\n$st');
+  }
+  try {
+    await SoundEffects.instance.prepare();
+  } catch (e, st) {
+    debugPrint('効果音の準備に失敗しました: $e\n$st');
+  }
+  try {
+    await BackgroundMusic.instance.prepare();
+  } catch (e, st) {
+    debugPrint('BGM の準備に失敗しました: $e\n$st');
   }
   runApp(const QReversiApp());
 }

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import '../../data/firebase/backend_warmup.dart';
 import '../../data/firebase/time_attack_run_remote_service.dart';
 import '../../data/time_attack/time_attack_run_launcher.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
 import '../widgets/operation_order_settings_dialog.dart';
+import '../widgets/sound_back_button.dart';
 import 'time_attack_game_screen.dart';
 import 'time_attack_leaderboard_screen.dart';
 import 'time_attack_result_screen.dart';
@@ -33,6 +35,8 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
 
   Future<void> _start() async {
     if (_busy) return;
+    await SoundEffects.instance.untilClickPlaying();
+    if (!mounted) return;
     setState(() {
       _starting = true;
       _error = null;
@@ -62,6 +66,8 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
 
   Future<void> _openRanking() async {
     if (_busy) return;
+    await SoundEffects.instance.untilSelectPlaying();
+    if (!mounted) return;
     setState(() => _openingRanking = true);
     try {
       await Navigator.of(context).push(
@@ -78,7 +84,9 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
     }
   }
 
-  void _openResultPreview(TimeAttackRunState runState) {
+  Future<void> _openResultPreview(TimeAttackRunState runState) async {
+    await SoundEffects.instance.untilSelectPlaying();
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TimeAttackResultScreen(
@@ -98,13 +106,17 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
         title: const Text('タイムアタックモード', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
         actions: [
           IconButton(
-            tooltip: '操作設定',
+            tooltip: '設定',
             icon: const Icon(Icons.settings_outlined),
             onPressed: _busy
                 ? null
-                : () => showOperationOrderSettingsDialog(context),
+                : () {
+                    SoundEffects.instance.click();
+                    showOperationOrderSettingsDialog(context);
+                  },
           ),
         ],
       ),

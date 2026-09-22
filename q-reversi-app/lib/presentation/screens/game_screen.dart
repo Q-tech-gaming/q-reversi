@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_navigator.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/game_state.dart';
 import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/position.dart';
@@ -13,6 +15,7 @@ import '../../domain/entities/piece.dart';
 import '../../domain/entities/board.dart';
 import '../../domain/entities/forbidden_area.dart';
 import '../providers/game_provider.dart';
+import '../input/cell_double_tap_apply.dart';
 import '../../domain/services/operation_order_preference_service.dart';
 import '../../domain/services/vs_cpu_progress_service.dart';
 import '../../domain/services/vs_play_guide_preference_service.dart';
@@ -48,6 +51,7 @@ enum _VsTutorialStep {
 /// ゲーム画面
 class GameScreen extends StatefulWidget {
   final GameState gameState;
+
   /// 復元時: 測定済みフラグ（再測定防止）
   final bool initialPostGameMeasurementCompleted;
 
@@ -74,21 +78,30 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _entangledErrorMessage; // エンタングル駒選択時のエラーメッセージ
   /// true のとき従来どおりゲート／盤面を順不同で選択できる
   bool _allowFreeSelectionOrder = false;
+
+  /// true のとき、ゲート選択後の同じ駒へのダブルタップで即適用する
+  bool _doubleTapApplyEnabled = false;
+  final _cellDoubleTap = CellDoubleTapApplyController();
+
+  /// VS の戻る確認から自分で pop したときに、効果音が二重に鳴らないようにする
+  bool _suppressRoutePopSound = false;
   final _operationOrderPrefs = OperationOrderPreferenceService();
   final _vsPlayGuidePrefs = VsPlayGuidePreferenceService();
 
   _VsTutorialStep? _vsTutorialStep;
   bool _vsTutorialSession = false;
   bool _vsMeasureGuideShown = false;
+
   /// ガイド表示中は false。次へで閉じてから操作待ちになる
   bool _vsTutorialAwaitingAction = false;
   VsTutorialBestTarget? _vsTutorialBestTarget;
   OverlayEntry? _vsGuideOverlay;
   Animation<double>? _vsRouteAnimation;
   AnimationStatusListener? _vsRouteAnimationListener;
+
   /// 遅延遷移のキャンセル用。操作結果を認識してから次ガイドへ進む間（約1テンポ）
-  static const Duration _vsTutorialNextGuideDelay =
-      Duration(milliseconds: 600);
+  static const Duration _vsTutorialNextGuideDelay = Duration(milliseconds: 600);
+
   /// 手番が戻ってから「自分のターン」ガイドを出すまでの間
   static const Duration _vsTutorialOwnTurnGuideDelay =
       Duration(milliseconds: 900);
@@ -101,6 +114,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final GlobalKey _vsWhiteGatesKey = GlobalKey();
   final GlobalKey _vsMeasureKey = GlobalKey();
   final Map<String, GlobalKey> _vsBoardCustomKeys = {};
+  late final BgmHandle _bgm;
 
   GlobalKey _vsBoardCustomKey(String id) =>
       _vsBoardCustomKeys.putIfAbsent(id, GlobalKey.new);
@@ -120,6 +134,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    final mode = widget.gameState.gameMode;
+    _bgm = BgmHandle.hold(
+      mode == GameMode.vs ? Bgm.vs : Bgm.home,
+      restart: mode == GameMode.freeRun,
+    );
     _gameProvider = GameProvider(
       widget.gameState,
       postGameMeasurementCompleted: widget.initialPostGameMeasurementCompleted,
@@ -131,18 +150,33 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _loadOperationOrderPreference() async {
     final allowFree = await _operationOrderPrefs.isFreeSelectionOrderEnabled();
+    final doubleTapApply = await _operationOrderPrefs.isDoubleTapApplyEnabled();
     if (!mounted) return;
     setState(() {
       _allowFreeSelectionOrder = allowFree;
+      _doubleTapApplyEnabled = doubleTapApply;
     });
   }
 
   Future<void> _openOperationOrderSettings() async {
     final result = await showOperationOrderSettingsDialog(context);
-    if (!mounted || result == null) return;
-    setState(() {
-      _allowFreeSelectionOrder = result;
-    });
+    if (!mounted) return;
+    if (result != null) {
+      setState(() {
+        _allowFreeSelectionOrder = result.allowFreeSelectionOrder;
+        _doubleTapApplyEnabled = result.doubleTapApplyEnabled;
+      });
+      return;
+    }
+    await _loadOperationOrderPreference();
+  }
+
+  bool get _isDoubleTapApplyArmed {
+    return _doubleTapApplyEnabled &&
+        _selectedGate != null &&
+        _vsTutorialStep == null &&
+        !_gameProvider.isProcessing &&
+        !_gameProvider.gameState.isGameOver;
   }
 
   /// ゲート先行モードでゲート未選択ならメッセージを出して操作をブロック
@@ -154,6 +188,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _bgm.release();
     _vsTutorialStepToken++;
     if (_vsRouteAnimationListener != null && _vsRouteAnimation != null) {
       _vsRouteAnimation!.removeStatusListener(_vsRouteAnimationListener!);
@@ -290,8 +325,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Rect? _rectForTargetCells(VsTutorialBestTarget target) {
     Rect? union;
     for (final pos in target.positions) {
-      final rect =
-          _rectForKey(_vsBoardCustomKey('cell_${pos.row}_${pos.col}'));
+      final rect = _rectForKey(_vsBoardCustomKey('cell_${pos.row}_${pos.col}'));
       if (rect == null) continue;
       union = union == null ? rect : union.expandToInclude(rect);
     }
@@ -346,8 +380,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _vsTutorialBestTarget = best;
         return _VsTutorialOverlayConfig(
           targetRect: _rectForBestTarget(best) ?? _rectForKey(_vsBoardKey),
-          message:
-              '自分の駒が最も増えるのは ${best.label} です'
+          message: '自分の駒が最も増えるのは ${best.label} です'
               '（差し引き +${best.netGain}：黒${best.blackFlips}→白）。\n'
               '白枠の場所を選んでください',
           nextLabel: 'OK',
@@ -368,8 +401,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           targetRect: best != null
               ? (_rectForTargetCells(best) ?? _rectForKey(_vsBoardKey))
               : _rectForKey(_vsBoardKey),
-          message:
-              '直前に適用した領域には、相手はゲートを適用できません。\n禁止領域として相手の手番に残ります',
+          message: '直前に適用した領域には、相手はゲートを適用できません。\n禁止領域として相手の手番に残ります',
           nextLabel: '次へ',
           onNext: _onVsTutorialContinueAfterForbidden,
           scale: 1.0,
@@ -379,8 +411,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case _VsTutorialStep.cooldown:
         return _VsTutorialOverlayConfig(
           key: _vsXGateKey,
-          message:
-              '自分のターンです。\nさっき使った X ゲートにはクールタイムが入っています',
+          message: '自分のターンです。\nさっき使った X ゲートにはクールタイムが入っています',
           nextLabel: '次へ',
           onNext: () => _setVsTutorialStep(_VsTutorialStep.gateStrength),
           scale: 1.25,
@@ -458,8 +489,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
     if (!matched) {
       setState(() {
-        _entangledErrorMessage =
-            '${best.label} を選んでください（自分の駒が最も増える場所です）';
+        _entangledErrorMessage = '${best.label} を選んでください（自分の駒が最も増える場所です）';
       });
       return;
     }
@@ -523,7 +553,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, false);
+            },
             child: const Text(
               'いいえ',
               style: TextStyle(
@@ -533,7 +566,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, true);
+            },
             child: const Text(
               'はい',
               style: TextStyle(
@@ -562,227 +598,271 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           return PopScope(
             canPop: state.gameMode != GameMode.vs,
             onPopInvokedWithResult: (didPop, result) async {
-              if (didPop) return;
+              if (didPop) {
+                if (!_suppressRoutePopSound) {
+                  SoundEffects.instance.reverse();
+                }
+                _suppressRoutePopSound = false;
+                return;
+              }
+              _suppressRoutePopSound = true;
+              SoundEffects.instance.reverse();
               await _handleVsPop(context, provider);
             },
             child: Scaffold(
-        backgroundColor: const Color(0xFF1A1F3A), // 背景色を統一（一番下まで同じ色）
-        appBar: AppBar(
-          title: const Text(
-            'Q-Reversi',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF1A1F3A),
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              tooltip: '操作設定',
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: _openOperationOrderSettings,
-            ),
-            if (kDebugMode)
-              IconButton(
-                tooltip: 'デバッグメニュー',
-                icon: const Icon(Icons.bug_report_outlined),
-                onPressed: () => _showDebugMenu(context),
+              backgroundColor: const Color(0xFF1A1F3A), // 背景色を統一（一番下まで同じ色）
+              appBar: AppBar(
+                title: const Text(
+                  'Q-Reversi',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: const Color(0xFF1A1F3A),
+                foregroundColor: Colors.white,
+                actions: [
+                  IconButton(
+                    tooltip: '設定',
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: _openOperationOrderSettings,
+                  ),
+                  if (kDebugMode)
+                    IconButton(
+                      tooltip: 'デバッグメニュー',
+                      icon: const Icon(Icons.bug_report_outlined),
+                      onPressed: () => _showDebugMenu(context),
+                    ),
+                ],
               ),
-          ],
-        ),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0A0E27),
-                Color(0xFF1A1F3A),
-              ],
-            ),
-          ),
-          child: Builder(
-            builder: (context) {
-              final currentPlayer = state.getCurrentPlayer();
-              if (state.gameMode == GameMode.vs) {
-                _ensureVsBoardCustomKeys(state.board);
-              }
-              
-              // VSモード: CPU等が手を進めたタイミングで、ローカルな「2ビット選択UI」状態を残さない
-              // `BoardWidget` 側は「2ビット選択中は禁止領域を表示しない」ため、ターン変化で必ずクリアする
-              if (state.gameMode == GameMode.vs &&
-                  state.turnCount != _lastObservedTurnCount) {
-                final shouldClear = _selectedGate != null ||
-                    _selectedPositions.isNotEmpty ||
-                    _selectedRow != null ||
-                    _selectedColumn != null;
-                _lastObservedTurnCount = state.turnCount;
-                if (shouldClear) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    setState(() {
-                      _selectedGate = null;
-                      _selectedPositions = [];
-                      _selectedRow = null;
-                      _selectedColumn = null;
-                      _selectedRowDirection = null;
-                      _selectedColumnDirection = null;
-                      _entangledErrorMessage = null;
-                    });
-                  });
-                }
-              }
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF0A0E27),
+                      Color(0xFF1A1F3A),
+                    ],
+                  ),
+                ),
+                child: Builder(
+                  builder: (context) {
+                    final currentPlayer = state.getCurrentPlayer();
+                    if (state.gameMode == GameMode.vs) {
+                      _ensureVsBoardCustomKeys(state.board);
+                    }
 
-              if (state.isGameOver) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  _maybeShowVsMeasureGuide(provider);
-                });
-              }
-              
-              return SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // 全体をスクロール可能にする
-                    final isVsMode = state.gameMode == GameMode.vs;
-                    final isFreeRunMode = state.gameMode == GameMode.freeRun;
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: (isVsMode || isFreeRunMode)
-                              ? 0 // VSモードとフリーランモードでは最小高さを0に設定
-                              : constraints.maxHeight, // 最小高さを画面サイズに設定
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: (isVsMode || isFreeRunMode)
-                              ? MainAxisAlignment.start 
-                              : MainAxisAlignment.center,
-                          children: [
-                            // ゲーム情報
-                            _buildGameInfo(context, state, currentPlayer),
-                            
-                            // ボード（画面サイズに応じて縮小可能）
-                            ConstrainedBox(
+                    // VSモード: CPU等が手を進めたタイミングで、ローカルな「2ビット選択UI」状態を残さない
+                    // `BoardWidget` 側は「2ビット選択中は禁止領域を表示しない」ため、ターン変化で必ずクリアする
+                    if (state.gameMode == GameMode.vs &&
+                        state.turnCount != _lastObservedTurnCount) {
+                      final shouldClear = _selectedGate != null ||
+                          _selectedPositions.isNotEmpty ||
+                          _selectedRow != null ||
+                          _selectedColumn != null;
+                      _lastObservedTurnCount = state.turnCount;
+                      if (shouldClear) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          _cellDoubleTap.reset();
+                          setState(() {
+                            _selectedGate = null;
+                            _selectedPositions = [];
+                            _selectedRow = null;
+                            _selectedColumn = null;
+                            _selectedRowDirection = null;
+                            _selectedColumnDirection = null;
+                            _entangledErrorMessage = null;
+                          });
+                        });
+                      }
+                    }
+
+                    if (state.isGameOver) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        _maybeShowVsMeasureGuide(provider);
+                      });
+                    }
+
+                    return SafeArea(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // 全体をスクロール可能にする
+                          final isVsMode = state.gameMode == GameMode.vs;
+                          final isFreeRunMode =
+                              state.gameMode == GameMode.freeRun;
+                          return SingleChildScrollView(
+                            child: ConstrainedBox(
                               constraints: BoxConstraints(
-                                maxHeight: (isVsMode || isFreeRunMode)
-                                    ? constraints.maxHeight * 0.5 // VSモードとフリーランモードでは50%に設定
-                                    : constraints.maxHeight * 0.6, // 画面の60%を最大値に
-                                maxWidth: constraints.maxWidth,
+                                minHeight: (isVsMode || isFreeRunMode)
+                                    ? 0 // VSモードとフリーランモードでは最小高さを0に設定
+                                    : constraints.maxHeight, // 最小高さを画面サイズに設定
                               ),
-                              child: Center(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: KeyedSubtree(
-                                    key: _vsBoardKey,
-                                    child: BoardWidget(
-                                    board: state.board,
-                                    selectedPositions: _selectedPositions,
-                                    highlightedPositions:
-                                        _getAdjacentPositions(state.board),
-                                    suggestedPositions: _vsTutorialBestTarget !=
-                                                null &&
-                                            (_vsTutorialStep ==
-                                                    _VsTutorialStep
-                                                        .selectBoard ||
-                                                _vsTutorialStep ==
-                                                    _VsTutorialStep.apply)
-                                        ? _vsTutorialBestTarget!.positions
-                                        : const [],
-                                    lastTwoBitGatePositions: currentPlayer != null
-                                        ? state.getLastTwoBitGatePositions(currentPlayer.id)
-                                        : [],
-                                    enableRowColumnButtons: state.gameMode == GameMode.freeRun || state.gameMode == GameMode.vs,
-                                    selectedGate: _selectedGate,
-                                    selectedRows: _selectedRow != null
-                                        ? {_selectedRow!: true}
-                                        : null,
-                                    selectedColumns: _selectedColumn != null
-                                        ? {_selectedColumn!: true}
-                                        : null,
-                                    suggestedRows: _vsTutorialBestTarget?.row !=
-                                                null &&
-                                            (_vsTutorialStep ==
-                                                    _VsTutorialStep
-                                                        .selectBoard ||
-                                                _vsTutorialStep ==
-                                                    _VsTutorialStep.apply)
-                                        ? {_vsTutorialBestTarget!.row!: true}
-                                        : null,
-                                    suggestedColumns: _vsTutorialBestTarget
-                                                    ?.column !=
-                                                null &&
-                                            (_vsTutorialStep ==
-                                                    _VsTutorialStep
-                                                        .selectBoard ||
-                                                _vsTutorialStep ==
-                                                    _VsTutorialStep.apply)
-                                        ? {
-                                            _vsTutorialBestTarget!.column!:
-                                                true
-                                          }
-                                        : null,
-                                    forbiddenAreas: currentPlayer != null
-                                        ? state.getForbiddenAreas(currentPlayer.id)
-                                        : null,
-                                    customKeys: state.gameMode == GameMode.vs
-                                        ? _vsBoardCustomKeys
-                                        : null,
-                                    onPositionTap: (position) {
-                                      _handlePositionTap(context, provider, position);
-                                    },
-                                    onRowSelected: (row, direction) {
-                                      if (state.gameMode == GameMode.freeRun || state.gameMode == GameMode.vs) {
-                                        _handleRowSelection(context, provider, row, direction);
-                                      }
-                                    },
-                                    onColumnSelected: (col, direction) {
-                                      if (state.gameMode == GameMode.freeRun || state.gameMode == GameMode.vs) {
-                                        _handleColumnSelection(context, provider, col, direction);
-                                      }
-                                    },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: (isVsMode || isFreeRunMode)
+                                    ? MainAxisAlignment.start
+                                    : MainAxisAlignment.center,
+                                children: [
+                                  // ゲーム情報
+                                  _buildGameInfo(context, state, currentPlayer),
+
+                                  // ボード（画面サイズに応じて縮小可能）
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: (isVsMode || isFreeRunMode)
+                                          ? constraints.maxHeight *
+                                              0.5 // VSモードとフリーランモードでは50%に設定
+                                          : constraints.maxHeight *
+                                              0.6, // 画面の60%を最大値に
+                                      maxWidth: constraints.maxWidth,
+                                    ),
+                                    child: Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: KeyedSubtree(
+                                          key: _vsBoardKey,
+                                          child: BoardWidget(
+                                            board: state.board,
+                                            selectedPositions:
+                                                _selectedPositions,
+                                            highlightedPositions:
+                                                _getAdjacentPositions(
+                                                    state.board),
+                                            suggestedPositions:
+                                                _vsTutorialBestTarget != null &&
+                                                        (_vsTutorialStep ==
+                                                                _VsTutorialStep
+                                                                    .selectBoard ||
+                                                            _vsTutorialStep ==
+                                                                _VsTutorialStep
+                                                                    .apply)
+                                                    ? _vsTutorialBestTarget!
+                                                        .positions
+                                                    : const [],
+                                            lastTwoBitGatePositions:
+                                                currentPlayer != null
+                                                    ? state
+                                                        .getLastTwoBitGatePositions(
+                                                            currentPlayer.id)
+                                                    : [],
+                                            enableRowColumnButtons: state
+                                                        .gameMode ==
+                                                    GameMode.freeRun ||
+                                                state.gameMode == GameMode.vs,
+                                            selectedGate: _selectedGate,
+                                            selectedRows: _selectedRow != null
+                                                ? {_selectedRow!: true}
+                                                : null,
+                                            selectedColumns:
+                                                _selectedColumn != null
+                                                    ? {_selectedColumn!: true}
+                                                    : null,
+                                            suggestedRows: _vsTutorialBestTarget
+                                                            ?.row !=
+                                                        null &&
+                                                    (_vsTutorialStep ==
+                                                            _VsTutorialStep
+                                                                .selectBoard ||
+                                                        _vsTutorialStep ==
+                                                            _VsTutorialStep
+                                                                .apply)
+                                                ? {
+                                                    _vsTutorialBestTarget!.row!:
+                                                        true
+                                                  }
+                                                : null,
+                                            suggestedColumns:
+                                                _vsTutorialBestTarget?.column !=
+                                                            null &&
+                                                        (_vsTutorialStep ==
+                                                                _VsTutorialStep
+                                                                    .selectBoard ||
+                                                            _vsTutorialStep ==
+                                                                _VsTutorialStep
+                                                                    .apply)
+                                                    ? {
+                                                        _vsTutorialBestTarget!
+                                                            .column!: true
+                                                      }
+                                                    : null,
+                                            forbiddenAreas:
+                                                currentPlayer != null
+                                                    ? state.getForbiddenAreas(
+                                                        currentPlayer.id)
+                                                    : null,
+                                            customKeys:
+                                                state.gameMode == GameMode.vs
+                                                    ? _vsBoardCustomKeys
+                                                    : null,
+                                            onPositionTap: (position) {
+                                              _handlePositionTap(
+                                                  context, provider, position);
+                                            },
+                                            onRowSelected: (row, direction) {
+                                              if (state.gameMode ==
+                                                      GameMode.freeRun ||
+                                                  state.gameMode ==
+                                                      GameMode.vs) {
+                                                _handleRowSelection(context,
+                                                    provider, row, direction);
+                                              }
+                                            },
+                                            onColumnSelected: (col, direction) {
+                                              if (state.gameMode ==
+                                                      GameMode.freeRun ||
+                                                  state.gameMode ==
+                                                      GameMode.vs) {
+                                                _handleColumnSelection(context,
+                                                    provider, col, direction);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
+
+                                  // 下部エリア（固定サイズ）
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // ゲート選択
+                                      if (currentPlayer?.isAI != true)
+                                        _buildGateSelection(
+                                            context, provider, currentPlayer),
+
+                                      // 測定ボタン（ゲーム終了時・1回のみ）／測定後は閉じる
+                                      if (state.isGameOver &&
+                                          !provider
+                                              .postGameMeasurementCompleted)
+                                        _buildMeasurementButton(
+                                            context, provider),
+                                      if (state.isGameOver &&
+                                          provider.postGameMeasurementCompleted)
+                                        _buildPostGameBackButton(context),
+
+                                      // エラーメッセージ
+                                      if (provider.errorMessage != null)
+                                        _buildErrorMessage(context, provider),
+                                    ],
                                   ),
-                                ),
+                                ],
                               ),
                             ),
-                            
-                            // 下部エリア（固定サイズ）
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // ゲート選択
-                                if (currentPlayer?.isAI != true)
-                                  _buildGateSelection(context, provider, currentPlayer),
-                                
-                                // 測定ボタン（ゲーム終了時・1回のみ）／測定後は閉じる
-                                if (state.isGameOver &&
-                                    !provider.postGameMeasurementCompleted)
-                                  _buildMeasurementButton(context, provider),
-                                if (state.isGameOver &&
-                                    provider.postGameMeasurementCompleted)
-                                  _buildPostGameBackButton(context),
-                                
-                                // エラーメッセージ
-                                if (provider.errorMessage != null)
-                                  _buildErrorMessage(context, provider),
-                              ],
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     );
                   },
                 ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
+              ),
+            ),
+          );
         },
       ),
     );
   }
-  
+
   Widget _buildGameInfo(
     BuildContext context,
     GameState state,
@@ -800,10 +880,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       }
     }
-    
+
     final isVsMode = state.gameMode == GameMode.vs;
     final isFreeRunMode = state.gameMode == GameMode.freeRun;
-    
+
     // フリーランモードでは白と黒のカウントのみ右上に表示
     if (isFreeRunMode) {
       return Container(
@@ -843,7 +923,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
       );
     }
-    
+
     return Container(
       padding: EdgeInsets.all(isVsMode ? 8 : 16), // VSモードではpaddingを減らす
       child: Row(
@@ -920,17 +1000,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
+
   Widget _buildGateSelection(
     BuildContext context,
     GameProvider provider,
     Player? currentPlayer,
   ) {
     if (currentPlayer == null) return const SizedBox();
-    
+
     final state = provider.gameState; // 最新の状態を取得
     final isVsMode = state.gameMode == GameMode.vs;
-    
+
     // VSモードの場合、白プレイヤーと黒プレイヤーを取得
     Player? whitePlayer;
     Player? blackPlayer;
@@ -943,7 +1023,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       }
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -955,7 +1035,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     // nullチェック済みのローカル変数として再定義
                     final wp = whitePlayer!;
                     final bp = blackPlayer!;
-                    
+
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -964,103 +1044,132 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           child: KeyedSubtree(
                             key: _vsWhiteGatesKey,
                             child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Text(
-                                'プレイヤー: 白',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'プレイヤー: 白',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              // 1行目：H, X
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [GateType.h, GateType.x].map((gate) {
-                                  final cooldown = wp.cooldowns[gate] ?? 0;
-                                  final isEnabled = wp.canUseGate(gate);
-                                  final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.white;
-                                  
-                                  return Padding(
-                                    key: gate == GateType.x ? _vsXGateKey : null,
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: SizedBox(
-                                      width: 60,
-                                      child: GateButton(
-                                        gate: gate,
-                                        isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
-                                        isReadOnly: !isCurrentPlayer,
+                                const SizedBox(height: 8),
+                                // 1行目：H, X
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children:
+                                      [GateType.h, GateType.x].map((gate) {
+                                    final cooldown = wp.cooldowns[gate] ?? 0;
+                                    final isEnabled = wp.canUseGate(gate);
+                                    final isSelected = _selectedGate == gate;
+                                    final isCurrentPlayer =
+                                        currentPlayer.color ==
+                                            PlayerColor.white;
+
+                                    return Padding(
+                                      key: gate == GateType.x
+                                          ? _vsXGateKey
+                                          : null,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      child: SizedBox(
+                                        width: 60,
+                                        child: GateButton(
+                                          gate: gate,
+                                          isEnabled:
+                                              isEnabled && isCurrentPlayer,
+                                          isSelected:
+                                              isSelected && isCurrentPlayer,
+                                          cooldown:
+                                              cooldown > 0 ? cooldown : null,
+                                          onTap: isCurrentPlayer
+                                              ? () {
+                                                  _handleGateSelection(gate);
+                                                }
+                                              : null,
+                                          isReadOnly: !isCurrentPlayer,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 8),
-                              // 2行目：Y, Z
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [GateType.y, GateType.z].map((gate) {
-                                  final cooldown = wp.cooldowns[gate] ?? 0;
-                                  final isEnabled = wp.canUseGate(gate);
-                                  final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.white;
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: SizedBox(
-                                      width: 60,
-                                      child: GateButton(
-                                        gate: gate,
-                                        isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
-                                        isReadOnly: !isCurrentPlayer,
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 8),
+                                // 2行目：Y, Z
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children:
+                                      [GateType.y, GateType.z].map((gate) {
+                                    final cooldown = wp.cooldowns[gate] ?? 0;
+                                    final isEnabled = wp.canUseGate(gate);
+                                    final isSelected = _selectedGate == gate;
+                                    final isCurrentPlayer =
+                                        currentPlayer.color ==
+                                            PlayerColor.white;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      child: SizedBox(
+                                        width: 60,
+                                        child: GateButton(
+                                          gate: gate,
+                                          isEnabled:
+                                              isEnabled && isCurrentPlayer,
+                                          isSelected:
+                                              isSelected && isCurrentPlayer,
+                                          cooldown:
+                                              cooldown > 0 ? cooldown : null,
+                                          onTap: isCurrentPlayer
+                                              ? () {
+                                                  _handleGateSelection(gate);
+                                                }
+                                              : null,
+                                          isReadOnly: !isCurrentPlayer,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 8),
-                              // 3行目：CNOT, SWAP
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [GateType.cnot, GateType.swap].map((gate) {
-                                  final cooldown = wp.cooldowns[gate] ?? 0;
-                                  final isEnabled = wp.canUseGate(gate);
-                                  final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.white;
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: SizedBox(
-                                      width: 60,
-                                      child: GateButton(
-                                        gate: gate,
-                                        isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
-                                        isReadOnly: !isCurrentPlayer,
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 8),
+                                // 3行目：CNOT, SWAP
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [GateType.cnot, GateType.swap]
+                                      .map((gate) {
+                                    final cooldown = wp.cooldowns[gate] ?? 0;
+                                    final isEnabled = wp.canUseGate(gate);
+                                    final isSelected = _selectedGate == gate;
+                                    final isCurrentPlayer =
+                                        currentPlayer.color ==
+                                            PlayerColor.white;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      child: SizedBox(
+                                        width: 60,
+                                        child: GateButton(
+                                          gate: gate,
+                                          isEnabled:
+                                              isEnabled && isCurrentPlayer,
+                                          isSelected:
+                                              isSelected && isCurrentPlayer,
+                                          cooldown:
+                                              cooldown > 0 ? cooldown : null,
+                                          onTap: isCurrentPlayer
+                                              ? () {
+                                                  _handleGateSelection(gate);
+                                                }
+                                              : null,
+                                          isReadOnly: !isCurrentPlayer,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -1085,20 +1194,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   final cooldown = bp.cooldowns[gate] ?? 0;
                                   final isEnabled = bp.canUseGate(gate);
                                   final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.black;
-                                  
+                                  final isCurrentPlayer =
+                                      currentPlayer.color == PlayerColor.black;
+
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4),
                                     child: SizedBox(
                                       width: 60,
                                       child: GateButton(
                                         gate: gate,
                                         isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
+                                        isSelected:
+                                            isSelected && isCurrentPlayer,
+                                        cooldown:
+                                            cooldown > 0 ? cooldown : null,
+                                        onTap: isCurrentPlayer
+                                            ? () {
+                                                _handleGateSelection(gate);
+                                              }
+                                            : null,
                                         isReadOnly: !isCurrentPlayer,
                                       ),
                                     ),
@@ -1113,20 +1228,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   final cooldown = bp.cooldowns[gate] ?? 0;
                                   final isEnabled = bp.canUseGate(gate);
                                   final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.black;
-                                  
+                                  final isCurrentPlayer =
+                                      currentPlayer.color == PlayerColor.black;
+
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4),
                                     child: SizedBox(
                                       width: 60,
                                       child: GateButton(
                                         gate: gate,
                                         isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
+                                        isSelected:
+                                            isSelected && isCurrentPlayer,
+                                        cooldown:
+                                            cooldown > 0 ? cooldown : null,
+                                        onTap: isCurrentPlayer
+                                            ? () {
+                                                _handleGateSelection(gate);
+                                              }
+                                            : null,
                                         isReadOnly: !isCurrentPlayer,
                                       ),
                                     ),
@@ -1137,24 +1258,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               // 3行目：CNOT, SWAP
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: [GateType.cnot, GateType.swap].map((gate) {
+                                children:
+                                    [GateType.cnot, GateType.swap].map((gate) {
                                   final cooldown = bp.cooldowns[gate] ?? 0;
                                   final isEnabled = bp.canUseGate(gate);
                                   final isSelected = _selectedGate == gate;
-                                  final isCurrentPlayer = currentPlayer.color == PlayerColor.black;
-                                  
+                                  final isCurrentPlayer =
+                                      currentPlayer.color == PlayerColor.black;
+
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4),
                                     child: SizedBox(
                                       width: 60,
                                       child: GateButton(
                                         gate: gate,
                                         isEnabled: isEnabled && isCurrentPlayer,
-                                        isSelected: isSelected && isCurrentPlayer,
-                                        cooldown: cooldown > 0 ? cooldown : null,
-                                        onTap: isCurrentPlayer ? () {
-                                          _handleGateSelection(gate);
-                                        } : null,
+                                        isSelected:
+                                            isSelected && isCurrentPlayer,
+                                        cooldown:
+                                            cooldown > 0 ? cooldown : null,
+                                        onTap: isCurrentPlayer
+                                            ? () {
+                                                _handleGateSelection(gate);
+                                              }
+                                            : null,
                                         isReadOnly: !isCurrentPlayer,
                                       ),
                                     ),
@@ -1174,13 +1302,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         // 1行目：H, X, Y, Z
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [GateType.h, GateType.x, GateType.y, GateType.z].map((gate) {
+                          children: [
+                            GateType.h,
+                            GateType.x,
+                            GateType.y,
+                            GateType.z
+                          ].map((gate) {
                             final cooldown = currentPlayer.cooldowns[gate] ?? 0;
                             final isEnabled = currentPlayer.canUseGate(gate);
                             final isSelected = _selectedGate == gate;
-                            
+
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               child: SizedBox(
                                 width: 60,
                                 child: GateButton(
@@ -1204,9 +1338,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             final cooldown = currentPlayer.cooldowns[gate] ?? 0;
                             final isEnabled = currentPlayer.canUseGate(gate);
                             final isSelected = _selectedGate == gate;
-                            
+
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               child: SizedBox(
                                 width: 60,
                                 child: GateButton(
@@ -1233,9 +1368,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             final cooldown = currentPlayer.cooldowns[gate] ?? 0;
                             final isEnabled = currentPlayer.canUseGate(gate);
                             final isSelected = _selectedGate == gate;
-                            
+
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               child: SizedBox(
                                 width: 60,
                                 child: GateButton(
@@ -1259,9 +1395,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             final cooldown = currentPlayer.cooldowns[gate] ?? 0;
                             final isEnabled = currentPlayer.canUseGate(gate);
                             final isSelected = _selectedGate == gate;
-                            
+
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               child: SizedBox(
                                 width: 60,
                                 child: GateButton(
@@ -1285,9 +1422,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             final cooldown = currentPlayer.cooldowns[gate] ?? 0;
                             final isEnabled = currentPlayer.canUseGate(gate);
                             final isSelected = _selectedGate == gate;
-                            
+
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               child: SizedBox(
                                 width: 60,
                                 child: GateButton(
@@ -1347,7 +1485,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       ? () => _applyGate(context, provider)
                       : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 16),
                     backgroundColor: _canApplyGate()
                         ? const Color(0xFF4CAF50)
                         : Colors.grey.shade700,
@@ -1380,7 +1519,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     _showMeasurementConfirmation(context, provider);
                   },
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 16),
                     backgroundColor: const Color(0xFF6B46C1),
                     foregroundColor: Colors.white,
                   ),
@@ -1483,7 +1623,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       },
     );
   }
-  
+
   Widget _buildResetButtons(
     BuildContext context,
     GameProvider provider,
@@ -1498,9 +1638,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onPressed: provider.canUndo ? provider.undo : null,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            backgroundColor: provider.canUndo
-                ? Colors.grey.shade700
-                : Colors.grey.shade800,
+            backgroundColor:
+                provider.canUndo ? Colors.grey.shade700 : Colors.grey.shade800,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
@@ -1535,7 +1674,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ],
     );
   }
-  
+
   Widget _buildResetButton(
     BuildContext context,
     GameProvider provider,
@@ -1561,7 +1700,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
+
   Widget _buildMeasurementButton(
     BuildContext context,
     GameProvider provider,
@@ -1612,14 +1751,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
+
   void _showMeasurementConfirmation(
     BuildContext context,
     GameProvider provider,
   ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
         title: const Text(
           '測定の確認',
@@ -1631,7 +1770,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'キャンセル',
               style: TextStyle(color: Colors.white70),
@@ -1639,8 +1778,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               provider.measure();
+              if (!context.mounted) return;
               await _showGameResult(context, provider);
             },
             child: const Text(
@@ -1652,8 +1792,22 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
-  Future<void> _showGameResult(BuildContext context, GameProvider provider) async {
+
+  void _playVsOutcomeSound({
+    required bool isDraw,
+    required bool vsCpu,
+    required bool playerWon,
+  }) {
+    if (isDraw) return;
+    if (vsCpu && !playerWon) {
+      SoundEffects.instance.vsLose();
+      return;
+    }
+    SoundEffects.instance.vsWin();
+  }
+
+  Future<void> _showGameResult(
+      BuildContext context, GameProvider provider) async {
     final state = provider.gameState;
     final board = state.board;
     var whiteCount = 0;
@@ -1669,8 +1823,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
 
-    final vsCpu = state.gameMode == GameMode.vs &&
-        state.vsMode == VsMode.cpu;
+    final vsCpu = state.gameMode == GameMode.vs && state.vsMode == VsMode.cpu;
     final cpuDifficulty = state.players[2]?.aiDifficulty;
     if (vsCpu && cpuDifficulty != null) {
       final VsCpuGameOutcome outcome;
@@ -1690,6 +1843,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!context.mounted) return;
 
     final isDraw = whiteCount == blackCount;
+    if (state.gameMode == GameMode.vs) {
+      _playVsOutcomeSound(
+        isDraw: isDraw,
+        vsCpu: vsCpu,
+        playerWon: whiteCount > blackCount,
+      );
+    }
     final playerWon = whiteCount > blackCount;
     final result = vsCpu
         ? isDraw
@@ -1725,9 +1885,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       isVsCpu: vsCpu,
       playerWon: playerWon,
       resultLabel: resultLabel,
-      showRankingButton: vsCpu &&
-          playerWon &&
-          cpuDifficulty == AIDifficulty.quantum,
+      showRankingButton:
+          vsCpu && playerWon && cpuDifficulty == AIDifficulty.quantum,
     );
     if (openRanking == true && context.mounted) {
       await Navigator.of(context).push(
@@ -1751,7 +1910,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
         children: [
           SimpleDialogOption(
-            onPressed: () => Navigator.pop(dialogContext, 'restart_vs_tutorial'),
+            onPressed: () =>
+                Navigator.pop(dialogContext, 'restart_vs_tutorial'),
             child: const Text(
               'VS初回ガイドを開始',
               style: TextStyle(color: Colors.white),
@@ -1874,6 +2034,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     final isDraw = whiteCount == blackCount;
     final playerWon = whiteCount > blackCount;
+    _playVsOutcomeSound(
+      isDraw: isDraw,
+      vsCpu: isVsCpu,
+      playerWon: playerWon,
+    );
     final accentColor = isDraw
         ? const Color(0xFFE2E8F0)
         : isVsCpu && !playerWon
@@ -1963,9 +2128,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required String resultLabel,
     bool showRankingButton = false,
   }) {
-    final winnerType = whiteCount > blackCount
-        ? PieceType.white
-        : PieceType.black;
+    final winnerType =
+        whiteCount > blackCount ? PieceType.white : PieceType.black;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -2003,57 +2167,56 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             children: [
               if (!isVsCpu || playerWon || isDraw)
                 TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 850),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) => Transform.scale(
-                  scale: value,
-                  child: child,
-                ),
-                child: Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: accentColor.withOpacity(0.12),
-                    border: Border.all(
-                      color: accentColor.withOpacity(0.75),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withOpacity(0.25),
-                        blurRadius: 20,
-                        spreadRadius: 1,
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 850),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) => Transform.scale(
+                    scale: value,
+                    child: child,
+                  ),
+                  child: Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: accentColor.withOpacity(0.12),
+                      border: Border.all(
+                        color: accentColor.withOpacity(0.75),
+                        width: 2,
                       ),
-                    ],
-                  ),
-                  child: Center(
-                    child: isDraw
-                        ? Icon(
-                            Icons.balance_rounded,
-                            color: accentColor,
-                            size: 52,
-                          )
-                        : isVsCpu
-                            ? Icon(
-                                Icons.emoji_events_rounded,
-                                color: accentColor,
-                                size: 52,
-                              )
-                            : PieceWidget(
-                                piece: Piece(
-                                  id: 'result-winner',
-                                  type: winnerType,
-                                  position: const Position(0, 0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withOpacity(0.25),
+                          blurRadius: 20,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: isDraw
+                          ? Icon(
+                              Icons.balance_rounded,
+                              color: accentColor,
+                              size: 52,
+                            )
+                          : isVsCpu
+                              ? Icon(
+                                  Icons.emoji_events_rounded,
+                                  color: accentColor,
+                                  size: 52,
+                                )
+                              : PieceWidget(
+                                  piece: Piece(
+                                    id: 'result-winner',
+                                    type: winnerType,
+                                    position: const Position(0, 0),
+                                  ),
+                                  size: 62,
                                 ),
-                                size: 62,
-                              ),
+                    ),
                   ),
                 ),
-              ),
-              if (!isVsCpu || playerWon || isDraw)
-                const SizedBox(height: 18),
+              if (!isVsCpu || playerWon || isDraw) const SizedBox(height: 18),
               Text(
                 resultLabel,
                 style: TextStyle(
@@ -2221,7 +2384,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
+
   Widget _buildErrorMessage(
     BuildContext context,
     GameProvider provider,
@@ -2247,8 +2410,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
+
   void _handleGateSelection(GateType gate) {
+    _cellDoubleTap.reset();
     if (_vsTutorialBlocksInteraction) return;
     if (_vsTutorialStep == _VsTutorialStep.selectX) {
       if (!_vsTutorialAwaitingAction) return;
@@ -2264,6 +2428,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (gate != GateType.x) return;
     }
 
+    SoundEffects.instance.gateSelect();
     setState(() {
       _selectedGate = gate;
       _entangledErrorMessage = null; // エラーメッセージをクリア
@@ -2294,31 +2459,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool _shouldResetSelectionForOneBitGate() {
-    final isRowOrColumnSelection = _selectedRow != null || _selectedColumn != null;
+    final isRowOrColumnSelection =
+        _selectedRow != null || _selectedColumn != null;
     final isFourCellsSelection = _selectedPositions.length == 4;
     if (isRowOrColumnSelection || isFourCellsSelection) {
       return false;
     }
     return _selectedPositions.length == 1 || _selectedPositions.length == 2;
   }
-  
+
   void _handleRowSelection(
     BuildContext context,
     GameProvider provider,
     int row,
     String direction, // 'left' or 'right'
   ) {
+    _cellDoubleTap.reset();
     if (_vsTutorialBlocksInteraction) return;
     if (_vsTutorialStep == _VsTutorialStep.selectBoard &&
         !_vsTutorialAwaitingAction) {
       return;
     }
+    if (_selectedGate?.isTwoBitGate == true) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed,
+          sameSelection:
+              _selectedRow == row && _selectedRowDirection == direction,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
+    var accepted = false;
     setState(() {
       if (_blockIfVsTutorialRequiresXFirst()) return;
       if (_blockIfGateRequiredFirst()) return;
       // 2ビットゲート選択時は行選択不可
       if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
-      
+      accepted = true;
+
       final isSameRow = _selectedRow == row;
       final isSameDirection = _selectedRowDirection == direction;
       final shouldDeselect = isSameRow && isSameDirection;
@@ -2327,7 +2507,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _selectedRowDirection = shouldDeselect ? null : direction;
       _selectedColumn = null;
       _selectedColumnDirection = null;
-      
+
       if (_selectedRow != null) {
         // エンタングル駒の手前まで選択範囲を制限
         _selectedPositions = _getRowPositionsUntilEntangled(
@@ -2339,26 +2519,41 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _selectedPositions = [];
       }
     });
+    if (accepted) SoundEffects.instance.cellSelect();
     _onVsTutorialAfterBoardSelection(provider);
   }
-  
+
   void _handleColumnSelection(
     BuildContext context,
     GameProvider provider,
     int col,
     String direction, // 'top' or 'bottom'
   ) {
+    _cellDoubleTap.reset();
     if (_vsTutorialBlocksInteraction) return;
     if (_vsTutorialStep == _VsTutorialStep.selectBoard &&
         !_vsTutorialAwaitingAction) {
       return;
     }
+    if (_selectedGate?.isTwoBitGate == true) return;
+    if (decideRepeatAxisTap(
+          armed: _isDoubleTapApplyArmed,
+          sameSelection:
+              _selectedColumn == col && _selectedColumnDirection == direction,
+          canApply: _canApplyGate(),
+        ) ==
+        RepeatAxisTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
+    var accepted = false;
     setState(() {
       if (_blockIfVsTutorialRequiresXFirst()) return;
       if (_blockIfGateRequiredFirst()) return;
       // 2ビットゲート選択時は列選択不可
       if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
-      
+      accepted = true;
+
       final isSameColumn = _selectedColumn == col;
       final isSameDirection = _selectedColumnDirection == direction;
       final shouldDeselect = isSameColumn && isSameDirection;
@@ -2367,7 +2562,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _selectedColumnDirection = shouldDeselect ? null : direction;
       _selectedRow = null;
       _selectedRowDirection = null;
-      
+
       if (_selectedColumn != null) {
         // エンタングル駒の手前まで選択範囲を制限
         _selectedPositions = _getColumnPositionsUntilEntangled(
@@ -2379,50 +2574,78 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _selectedPositions = [];
       }
     });
+    if (accepted) SoundEffects.instance.cellSelect();
     _onVsTutorialAfterBoardSelection(provider);
   }
-  
+
   void _handlePositionTap(
     BuildContext context,
     GameProvider provider,
     Position position,
   ) {
-    if (_vsTutorialBlocksInteraction) return;
-    if (_vsTutorialStep == _VsTutorialStep.selectBoard &&
-        !_vsTutorialAwaitingAction) {
+    if (_vsTutorialBlocksInteraction) {
+      _cellDoubleTap.reset();
       return;
     }
+    if (_vsTutorialStep == _VsTutorialStep.selectBoard &&
+        !_vsTutorialAwaitingAction) {
+      _cellDoubleTap.reset();
+      return;
+    }
+    final armed = _isDoubleTapApplyArmed;
+    final decision = _cellDoubleTap.onTap(
+      position: position,
+      armed: armed,
+      canApply: _canApplyGate(),
+      selectionContainsCell: _selectedPositions.contains(position),
+      twoBitSingleCell: _selectedGate?.isTwoBitGate == true &&
+          _selectedPositions.length == 1 &&
+          _selectedPositions.first == position,
+    );
+    if (decision == CellDoubleTapDecision.apply) {
+      _applyGate(context, provider);
+      return;
+    }
+    if (decision == CellDoubleTapDecision.ignore) {
+      return;
+    }
+    var accepted = false;
     setState(() {
       if (_blockIfVsTutorialRequiresXFirst()) return;
       if (_blockIfGateRequiredFirst()) return;
       if (_selectedGate != null && _selectedGate!.isTwoBitGate) {
         // 2ビットゲート選択中: 2マス選択（エンタングル駒は選択不可、隣接した駒のみ選択可能）
-        final piece = provider.gameState.board.getPiece(position.row, position.col);
+        final piece =
+            provider.gameState.board.getPiece(position.row, position.col);
         if (piece != null && piece.isEntangled) {
           // エンタングル駒は選択不可
           _entangledErrorMessage = 'エンタングル駒は選択できません';
           return;
         }
-        
+
         // エラーメッセージをクリア
         _entangledErrorMessage = null;
-        
+
         if (_selectedPositions.isEmpty) {
           // 1つ目の位置を選択
+          accepted = true;
           _selectedPositions = [position];
         } else if (_selectedPositions.length == 1) {
           // 2つ目の位置を選択（隣接チェック）
           final firstPosition = _selectedPositions.first;
           if (position.isAdjacent(firstPosition)) {
+            accepted = true;
             _selectedPositions.add(position);
           } else {
             // 隣接していない場合は、新しい位置を1つ目として設定
+            accepted = true;
             _selectedPositions = [position];
             _entangledErrorMessage = '隣接した駒のみ選択できます';
             return;
           }
         } else if (_selectedPositions.length == 2) {
           // 既に2マス選択済みの場合、最初の選択をクリアして新しい選択に置き換え
+          accepted = true;
           _selectedPositions = [position];
         }
         _selectedRow = null;
@@ -2435,13 +2658,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _selectedColumn = null;
         _selectedRowDirection = null;
         _selectedColumnDirection = null;
-        
+
         // 禁止領域チェック: 4マス選択の場合、禁止領域の4マスを始点とする4マス選択を禁止
         final currentPlayer = provider.gameState.getCurrentPlayer();
         if (currentPlayer != null) {
-          final forbiddenAreas = provider.gameState.getForbiddenAreas(currentPlayer.id);
+          final forbiddenAreas =
+              provider.gameState.getForbiddenAreas(currentPlayer.id);
           for (final area in forbiddenAreas) {
-            if (area.type == ForbiddenAreaType.fourPieces && area.positions != null) {
+            if (area.type == ForbiddenAreaType.fourPieces &&
+                area.positions != null) {
               // 禁止領域の4マスのいずれかが始点となる4マス選択を禁止
               for (final forbiddenPos in area.positions!) {
                 if (forbiddenPos == position) {
@@ -2452,9 +2677,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             }
           }
         }
-        
+
         final fourPieces = _getFourPieces(position, provider.gameState.board);
-        
+
         // エンタングル駒が含まれているかチェック
         bool hasEntangled = false;
         for (final pos in fourPieces) {
@@ -2464,9 +2689,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             break;
           }
         }
-        
+
         // エンタングル駒が含まれていない場合のみ選択
         if (!hasEntangled) {
+          accepted = true;
           _selectedPositions = fourPieces;
           _entangledErrorMessage = null; // エラーメッセージをクリア
         } else {
@@ -2474,12 +2700,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       }
     });
+    if (accepted) SoundEffects.instance.cellSelect();
     _onVsTutorialAfterBoardSelection(provider);
+    if (armed) {
+      _cellDoubleTap.record(position, accepted: accepted);
+    }
   }
-  
+
   bool _canApplyGate() {
     if (_selectedGate == null || _selectedPositions.isEmpty) return false;
-    
+
     if (_selectedGate!.isTwoBitGate) {
       // 2ビットゲート: 2マス選択が必要
       return _selectedPositions.length == 2;
@@ -2488,29 +2718,29 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return _selectedPositions.isNotEmpty;
     }
   }
-  
+
   List<Position> _getFourPieces(Position position, Board board) {
     final positions = <Position>[];
     final row = position.row;
     final col = position.col;
-    
+
     // 仕様: そのマス、及び右に1マス、下に1マス、右下に1マスの正方4マスを選択
     // 右端/下端を選択した場合は自動補正し、そこを含む4マスの選択とする
-    
+
     // 基準位置を決定（右端/下端の場合は左/上にシフト）
     int baseRow = row;
     int baseCol = col;
-    
+
     // 右端の場合、左に1マスシフト
     if (col == board.cols - 1 && board.cols > 1) {
       baseCol = col - 1;
     }
-    
+
     // 下端の場合、上に1マスシフト
     if (row == board.rows - 1 && board.rows > 1) {
       baseRow = row - 1;
     }
-    
+
     // 4マスを選択: baseRow, baseCol とその右、下、右下
     final positionsToAdd = [
       Position(baseRow, baseCol),
@@ -2518,16 +2748,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       Position(baseRow + 1, baseCol),
       Position(baseRow + 1, baseCol + 1),
     ];
-    
+
     for (final pos in positionsToAdd) {
       if (board.isValidPosition(pos.row, pos.col)) {
         positions.add(pos);
       }
     }
-    
+
     return positions;
   }
-  
+
   /// 行選択でエンタングル駒の手前まで選択範囲を取得
   List<Position> _getRowPositionsUntilEntangled(
     Board board,
@@ -2535,7 +2765,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String direction, // 'left' or 'right'
   ) {
     final positions = <Position>[];
-    
+
     if (direction == 'left') {
       // 左から（col=0から）エンタングル駒の手前まで
       for (int col = 0; col < board.cols; col++) {
@@ -2555,10 +2785,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         positions.add(Position(row, col));
       }
     }
-    
+
     return positions;
   }
-  
+
   /// 列選択でエンタングル駒の手前まで選択範囲を取得
   List<Position> _getColumnPositionsUntilEntangled(
     Board board,
@@ -2566,7 +2796,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String direction, // 'top' or 'bottom'
   ) {
     final positions = <Position>[];
-    
+
     if (direction == 'top') {
       // 上から（row=0から）エンタングル駒の手前まで
       for (int row = 0; row < board.rows; row++) {
@@ -2586,10 +2816,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         positions.add(Position(row, col));
       }
     }
-    
+
     return positions;
   }
-  
+
   /// 2ビットゲート選択時に、1つ目の位置に隣接する位置を取得
   List<Position> _getAdjacentPositions(Board board) {
     if (_selectedGate == null || !_selectedGate!.isTwoBitGate) {
@@ -2598,18 +2828,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_selectedPositions.isEmpty) {
       return [];
     }
-    
+
     final firstPosition = _selectedPositions.first;
     final adjacentPositions = <Position>[];
-    
+
     // 隣接する8方向をチェック
     for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
       for (int colOffset = -1; colOffset <= 1; colOffset++) {
         if (rowOffset == 0 && colOffset == 0) continue; // 自分自身は除外
-        
+
         final newRow = firstPosition.row + rowOffset;
         final newCol = firstPosition.col + colOffset;
-        
+
         if (board.isValidPosition(newRow, newCol)) {
           final adjacentPos = Position(newRow, newCol);
           // 既に選択されている位置は除外
@@ -2619,16 +2849,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       }
     }
-    
+
     return adjacentPositions;
   }
-  
+
   Future<void> _applyGate(
     BuildContext context,
     GameProvider provider,
   ) async {
     if (_selectedGate == null) return;
-    
+
     // 行/列選択の場合、禁止領域設定のために行/列全体の位置を使用
     List<Position> targetPositions;
     if (_selectedRow != null) {
@@ -2659,9 +2889,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (_selectedPositions.isEmpty) return;
       targetPositions = _selectedPositions;
     }
-    
-    final pauseAiForTutorial = _vsTutorialStep == _VsTutorialStep.apply &&
-        _vsTutorialAwaitingAction;
+
+    final pauseAiForTutorial =
+        _vsTutorialStep == _VsTutorialStep.apply && _vsTutorialAwaitingAction;
     if (_vsTutorialStep == _VsTutorialStep.apply &&
         !_vsTutorialAwaitingAction) {
       return;
@@ -2676,8 +2906,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             selectedPositions: _selectedPositions,
           )) {
         setState(() {
-          _entangledErrorMessage =
-              '${best.label} を選んでから適用してください';
+          _entangledErrorMessage = '${best.label} を選んでから適用してください';
           _vsTutorialStep = _VsTutorialStep.selectBoard;
           _vsTutorialAwaitingAction = true;
         });
@@ -2685,12 +2914,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
 
+    SoundEffects.instance.apply();
     final success = await provider.applyGate(
       _selectedGate!,
       targetPositions,
       processAi: !pauseAiForTutorial,
     );
-    
+
     if (success) {
       setState(() {
         _selectedGate = null;
@@ -2728,4 +2958,3 @@ class _VsTutorialOverlayConfig {
   final double highlightPadding;
   final double borderWidth;
 }
-

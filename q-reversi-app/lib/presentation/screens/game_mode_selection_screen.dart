@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/app_navigator.dart';
+import '../../core/background_music.dart';
+import '../../core/sound_effects.dart';
 import '../../data/vs_game_persistence_service.dart';
 import '../../domain/entities/game_mode.dart';
 import '../../domain/services/challenge_progress_service.dart';
@@ -23,7 +27,8 @@ class GameModeSelectionScreen extends StatefulWidget {
   const GameModeSelectionScreen({super.key});
 
   @override
-  State<GameModeSelectionScreen> createState() => _GameModeSelectionScreenState();
+  State<GameModeSelectionScreen> createState() =>
+      _GameModeSelectionScreenState();
 }
 
 class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
@@ -34,11 +39,59 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
   bool _isTutorialCompleted = false;
   bool _isStage0RequirementMet = false;
   bool _isLoading = true;
+  BgmHandle? _menuBgm;
+  Timer? _menuBgmDelay;
+  Animation<double>? _routeAnimation;
+  AnimationStatusListener? _routeListener;
 
   @override
   void initState() {
     super.initState();
     _checkTutorialStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bindMenuBgm());
+  }
+
+  /// START を押してから約3秒あけて home_bgm を始める。
+  void _bindMenuBgm() {
+    if (!mounted) return;
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation != null) {
+      _routeAnimation = animation;
+      _routeListener = (status) {
+        if (!mounted) return;
+        if (status == AnimationStatus.reverse ||
+            status == AnimationStatus.dismissed) {
+          _stopMenuBgm();
+        }
+      };
+      animation.addStatusListener(_routeListener!);
+    }
+    _startMenuBgm();
+  }
+
+  void _startMenuBgm() {
+    if (_menuBgm != null || _menuBgmDelay != null) return;
+    _menuBgmDelay = Timer(const Duration(seconds: 3), () {
+      _menuBgmDelay = null;
+      if (!mounted) return;
+      _menuBgm ??= BgmHandle.hold(Bgm.home);
+    });
+  }
+
+  void _stopMenuBgm() {
+    _menuBgmDelay?.cancel();
+    _menuBgmDelay = null;
+    _menuBgm?.release();
+    _menuBgm = null;
+  }
+
+  @override
+  void dispose() {
+    if (_routeListener != null && _routeAnimation != null) {
+      _routeAnimation!.removeStatusListener(_routeListener!);
+    }
+    _stopMenuBgm();
+    super.dispose();
   }
 
   Future<void> _checkTutorialStatus() async {
@@ -64,7 +117,7 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -114,12 +167,18 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
           IconButton(
             tooltip: 'ヘルプ・情報',
             icon: const Icon(Icons.info_outline),
-            onPressed: () => showAppLegalInfoSheet(context),
+            onPressed: () {
+              SoundEffects.instance.click();
+              showAppLegalInfoSheet(context);
+            },
           ),
           IconButton(
-            tooltip: '操作設定',
+            tooltip: '設定',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => showOperationOrderSettingsDialog(context),
+            onPressed: () {
+              SoundEffects.instance.click();
+              showOperationOrderSettingsDialog(context);
+            },
           ),
         ],
       ),
@@ -256,7 +315,7 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
       ),
     );
   }
-  
+
   Widget _buildModeCard(
     BuildContext context,
     String title,
@@ -274,9 +333,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
         leading: Icon(
           icon,
           size: 32,
-          color: enabled
-              ? const Color(0xFF6B46C1)
-              : Colors.grey.withOpacity(0.5),
+          color:
+              enabled ? const Color(0xFF6B46C1) : Colors.grey.withOpacity(0.5),
         ),
         title: Text(
           title,
@@ -287,19 +345,18 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
         subtitle: Text(
           description,
           style: TextStyle(
-            color: enabled
-                ? Colors.white70
-                : Colors.grey.withOpacity(0.5),
+            color: enabled ? Colors.white70 : Colors.grey.withOpacity(0.5),
           ),
         ),
         trailing: Icon(
           Icons.arrow_forward,
-          color: enabled
-              ? Colors.white70
-              : Colors.grey.withOpacity(0.5),
+          color: enabled ? Colors.white70 : Colors.grey.withOpacity(0.5),
         ),
         onTap: enabled
-            ? onTap
+            ? () async {
+                await SoundEffects.instance.untilSelectPlaying();
+                onTap();
+              }
             : () {
                 if (onDisabledTap != null) {
                   onDisabledTap();
@@ -317,7 +374,7 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
       ),
     );
   }
-  
+
   Future<void> _openVsMode(BuildContext context) async {
     BackendWarmup.kickoff();
     final hasSave = await _vsPersistence.hasSavedGame();
@@ -343,14 +400,20 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, false);
+            },
             child: const Text(
               '最初から',
               style: TextStyle(color: Colors.white70),
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              SoundEffects.instance.click();
+              Navigator.pop(ctx, true);
+            },
             child: const Text(
               'はい',
               style: TextStyle(color: Colors.white),
@@ -408,10 +471,10 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
         ),
       },
     );
-    
+
     final gameService = GameService();
     final initializedState = gameService.createInitialBoard(gameState);
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -420,4 +483,3 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
     );
   }
 }
-

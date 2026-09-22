@@ -4,6 +4,8 @@ import '../../data/vs/default_vs_quantum_leaderboard_repository.dart';
 import '../../data/vs/vs_quantum_leaderboard_repository.dart';
 import '../../domain/services/time_attack_local_profile_service.dart';
 import '../../domain/vs/vs_quantum_leaderboard_entry.dart';
+import '../../core/sound_effects.dart';
+import '../widgets/sound_back_button.dart';
 import '../widgets/time_attack_nickname_dialog.dart';
 import '../widgets/time_attack_rank_style.dart';
 
@@ -150,15 +152,26 @@ class _VsQuantumLeaderboardScreenState
         title: const Text('VS量子AI RANKING', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
+        leading: const SoundBackButton(),
         actions: [
           IconButton(
             tooltip: 'プレイヤー名',
-            onPressed: (_loading || _editingName) ? null : _editNickname,
+            onPressed: (_loading || _editingName)
+                ? null
+                : () {
+                    SoundEffects.instance.click();
+                    _editNickname();
+                  },
             icon: const Icon(Icons.badge_outlined),
           ),
           IconButton(
             tooltip: '更新',
-            onPressed: _loading ? null : _load,
+            onPressed: _loading
+                ? null
+                : () {
+                    SoundEffects.instance.click();
+                    _load();
+                  },
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -197,7 +210,10 @@ class _VsQuantumLeaderboardScreenState
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _load,
+                onPressed: () {
+                  SoundEffects.instance.click();
+                  _load();
+                },
                 child: const Text('再試行'),
               ),
             ],

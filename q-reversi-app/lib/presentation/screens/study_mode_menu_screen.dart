@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/sound_effects.dart';
 import '../../domain/entities/game_mode.dart';
+import '../widgets/sound_back_button.dart';
 import 'study_quantum_intro_screen.dart';
 import 'study_one_cell_quantum_screen.dart';
 import 'study_two_cell_quantum_screen.dart';
@@ -49,6 +51,7 @@ class StudyModeMenuScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
         centerTitle: true,
+        leading: const SoundBackButton(),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -70,7 +73,9 @@ class StudyModeMenuScreen extends StatelessWidget {
               final item = _items[index];
               return _StudyMenuCard(
                 item: item,
-                onTap: () {
+                onTap: () async {
+                  await SoundEffects.instance.untilSelectPlaying();
+                  if (!context.mounted) return;
                   if (item.mode == StudyMode.intro) {
                     Navigator.push(
                       context,
