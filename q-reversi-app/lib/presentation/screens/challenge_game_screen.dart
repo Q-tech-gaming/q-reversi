@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +16,7 @@ import '../../domain/services/operation_order_preference_service.dart';
 import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
 import '../providers/challenge_progress_notifier.dart';
+import '../gate_apply_sound.dart';
 import '../providers/game_provider.dart';
 import '../input/cell_double_tap_apply.dart';
 import '../widgets/board_widget.dart';
@@ -78,6 +81,12 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   final ChallengeLevelLoader _levelLoader = ChallengeLevelLoader();
   final _operationOrderPrefs = OperationOrderPreferenceService();
   late final BgmHandle _bgm;
+  Timer? _countdownTimer;
+
+  /// 3, 2, 1。0 になったら操作できる。
+  int _countdownValue = 3;
+
+  bool get _isCountingDown => _countdownValue > 0;
 
   @override
   void initState() {
@@ -85,7 +94,25 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     _bgm = BgmHandle.hold(Bgm.challenge);
     _loadSwipePreviewData();
     _loadOperationOrderPreference();
-    _maybeShowGuide();
+    _startOpeningCountdown();
+  }
+
+  void _startOpeningCountdown() {
+    SoundEffects.instance.challengeStart();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_countdownValue <= 1) {
+        timer.cancel();
+        _countdownTimer = null;
+        setState(() => _countdownValue = 0);
+        _maybeShowGuide();
+        return;
+      }
+      setState(() => _countdownValue -= 1);
+    });
   }
 
   Future<void> _loadOperationOrderPreference() async {
@@ -120,6 +147,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _bgm.release();
     if (_routeAnimationListener != null && _routeAnimation != null) {
       _routeAnimation!.removeStatusListener(_routeAnimationListener!);
@@ -410,20 +438,20 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           body: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onHorizontalDragStart: (_) {
-              if (_isSwipeNavigating) return;
+              if (_isCountingDown || _isSwipeNavigating) return;
               setState(() {
                 _horizontalDragOffset = 0;
               });
             },
             onHorizontalDragUpdate: (details) {
-              if (_isSwipeNavigating) return;
+              if (_isCountingDown || _isSwipeNavigating) return;
               setState(() {
                 _horizontalDragOffset += details.primaryDelta ?? 0;
               });
             },
             onHorizontalDragEnd: _handleHorizontalDragEnd,
             onHorizontalDragCancel: () {
-              if (_isSwipeNavigating) return;
+              if (_isCountingDown || _isSwipeNavigating) return;
               setState(() {
                 _horizontalDragOffset = 0;
               });
@@ -527,6 +555,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                     ),
                   ),
                 ),
+                if (_isCountingDown) _buildCountdownOverlay(),
               ],
             ),
           ),
@@ -535,8 +564,31 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     );
   }
 
+  Widget _buildCountdownOverlay() {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: const Color(0xFF0A0E27),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Text(
+              '$_countdownValue',
+              key: ValueKey(_countdownValue),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 128,
+                fontWeight: FontWeight.bold,
+                height: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleHorizontalDragEnd(DragEndDetails details) async {
-    if (_isSwipeNavigating) return;
+    if (_isCountingDown || _isSwipeNavigating) return;
 
     final dragDistance = _horizontalDragOffset;
     final swipeThreshold = MediaQuery.of(context).size.width * 0.25;
@@ -1254,8 +1306,12 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   }
 
   void _applyGate(BuildContext context, GameProvider provider) async {
-    if (!_canApplyGate()) return;
-    SoundEffects.instance.apply();
+    if (_isCountingDown || !_canApplyGate()) return;
+    playGateApplySound(
+      provider.gameState,
+      _selectedGate!,
+      _selectedPositions,
+    );
 
     final success =
         await provider.applyGate(_selectedGate!, _selectedPositions);

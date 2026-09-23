@@ -8,8 +8,8 @@ import '../domain/services/audio_volume_preference_service.dart';
 /// 画面に応じてループ再生する BGM。
 ///
 /// タイトル画面では鳴らさない。モード選択に入ってから [Bgm.home]。
-/// 各画面が自分の曲を重ね、閉じたら下の曲に戻る。
-/// ホームは止めた位置から再開する。フリーランだけ頭から鳴らし直す。
+/// 各画面が自分の曲を重ね、メニューへ戻ると home_bgm を頭からフェードインする。
+/// フリーランも home_bgm を頭から鳴らし直す。
 class BackgroundMusic with WidgetsBindingObserver {
   BackgroundMusic._();
 
@@ -76,7 +76,7 @@ class BackgroundMusic with WidgetsBindingObserver {
         final player = AudioPlayer();
         await player.setAudioContext(context);
         await player.setReleaseMode(ReleaseMode.loop);
-        await player.setVolume(_volume);
+        await player.setVolume(_outputFor(track));
         await player.setSource(AssetSource(track.path));
         _players[track] = player;
       }
@@ -102,10 +102,8 @@ class BackgroundMusic with WidgetsBindingObserver {
   void setVolume(double volume) {
     _volume = volume.clamp(0.0, 1.0);
     for (final entry in _players.entries) {
-      final level = _fadingHome && entry.key == Bgm.home
-          ? _volume * _homeFadeProgress
-          : _volume;
-      unawaited(entry.value.setVolume(level));
+      final fade = _fadingHome && entry.key == Bgm.home ? _homeFadeProgress : 1.0;
+      unawaited(entry.value.setVolume(_outputFor(entry.key, fade: fade)));
     }
   }
 
@@ -165,21 +163,25 @@ class BackgroundMusic with WidgetsBindingObserver {
     if (player == null) return;
 
     final restartThisClaim = top.restart && !_restarted.contains(top.id);
-    if (_active == top.track && !restartThisClaim) {
+    final switching = _active != top.track;
+    // メニューへ戻ったときは、途中再生ではなく頭からフェードインする。
+    final startHomeOver = top.track == Bgm.home &&
+        (switching ||
+            restartThisClaim ||
+            (_active == Bgm.home && _activeClaimId != top.id));
+    if (_active == top.track && !restartThisClaim && !startHomeOver) {
       // 次のレベルへ進むときなど、同じ曲がそのまま続く。
-      // 再生し直すと端末によっては頭に戻る。
       _activeClaimId = top.id;
       if (seen != _epoch) _schedule();
       return;
     }
 
     try {
-      final switching = _active != top.track;
-      if (switching && _active == Bgm.home) {
+      if (switching && _active == Bgm.home && !startHomeOver) {
         _endHomeFade();
-        await _players[Bgm.home]?.setVolume(_volume);
+        await _players[Bgm.home]?.setVolume(_outputFor(Bgm.home));
       }
-      if (switching && _active != null) {
+      if ((switching || startHomeOver) && _active != null) {
         await _players[_active!]?.pause();
       }
       if (seen != _epoch) {
@@ -189,8 +191,10 @@ class BackgroundMusic with WidgetsBindingObserver {
 
       if (restartThisClaim) {
         _restarted.add(top.id);
-        await player.seek(Duration.zero);
-      } else if (switching && top.track != Bgm.home) {
+      }
+      if (restartThisClaim ||
+          startHomeOver ||
+          (switching && top.track != Bgm.home)) {
         await player.seek(Duration.zero);
       }
       if (seen != _epoch) {
@@ -200,14 +204,13 @@ class BackgroundMusic with WidgetsBindingObserver {
 
       _active = top.track;
       _activeClaimId = top.id;
-      final fadeHome = !_inBackground &&
-          top.track == Bgm.home &&
-          (restartThisClaim || await _homeIsAtStart(player));
-      if (fadeHome) {
+      if (startHomeOver && !_inBackground) {
         await _fadeInHome(player);
       } else if (top.track == Bgm.home) {
         _endHomeFade();
-        await player.setVolume(_volume);
+        await player.setVolume(_outputFor(Bgm.home));
+      } else {
+        await player.setVolume(_outputFor(top.track));
       }
       if (_inBackground) {
         await player.pause();
@@ -219,15 +222,6 @@ class BackgroundMusic with WidgetsBindingObserver {
     }
 
     if (seen != _epoch) _schedule();
-  }
-
-  Future<bool> _homeIsAtStart(AudioPlayer player) async {
-    try {
-      final position = await player.getCurrentPosition();
-      return position == null || position <= const Duration(milliseconds: 300);
-    } catch (_) {
-      return true;
-    }
   }
 
   Future<void> _fadeInHome(AudioPlayer player) async {
@@ -249,15 +243,22 @@ class BackgroundMusic with WidgetsBindingObserver {
       i++;
       final t = (i / steps).clamp(0.0, 1.0);
       _homeFadeProgress = Curves.easeOut.transform(t);
-      unawaited(player.setVolume(_volume * _homeFadeProgress));
+      unawaited(player.setVolume(_outputFor(Bgm.home, fade: _homeFadeProgress)));
       if (i >= steps) {
         _fadingHome = false;
         _homeFadeProgress = 1;
         timer.cancel();
         _homeFadeTimer = null;
-        unawaited(player.setVolume(_volume));
+        unawaited(player.setVolume(_outputFor(Bgm.home)));
       }
     });
+  }
+
+  /// 表示 100% は、以前の音量 50% にあたる。home_bgm はそのさらに半分。
+  double _outputFor(Bgm track, {double fade = 1}) {
+    const displayedFullEquals = 0.5;
+    final gain = track == Bgm.home ? 0.5 : 1.0;
+    return (_volume * displayedFullEquals * gain * fade).clamp(0.0, 1.0);
   }
 
   void _endHomeFade() {

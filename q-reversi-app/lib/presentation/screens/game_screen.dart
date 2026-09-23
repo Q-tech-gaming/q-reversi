@@ -14,6 +14,7 @@ import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/board.dart';
 import '../../domain/entities/forbidden_area.dart';
+import '../gate_apply_sound.dart';
 import '../providers/game_provider.dart';
 import '../input/cell_double_tap_apply.dart';
 import '../../domain/services/operation_order_preference_service.dart';
@@ -2914,7 +2915,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
 
-    SoundEffects.instance.apply();
+    playGateApplySound(
+      provider.gameState,
+      _selectedGate!,
+      targetPositions,
+    );
     final success = await provider.applyGate(
       _selectedGate!,
       targetPositions,

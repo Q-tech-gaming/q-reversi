@@ -12,6 +12,7 @@ import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/time_attack/time_attack_config.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
+import '../gate_apply_sound.dart';
 import '../providers/game_provider.dart';
 import '../providers/time_attack_provider.dart';
 import '../input/cell_double_tap_apply.dart';
@@ -52,6 +53,27 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   bool _handlingClear = false;
   bool _navigatedToResult = false;
   late final BgmHandle _bgm;
+  int _lastTickRemainingMs = 0;
+  final Set<int> _playedTickMarks = {};
+
+  /// 終了10秒前は1秒ごと、5秒前は0.5秒ごと。
+  static const List<int> _tickMarksMs = [
+    10000,
+    9000,
+    8000,
+    7000,
+    6000,
+    5000,
+    4500,
+    4000,
+    3500,
+    3000,
+    2500,
+    2000,
+    1500,
+    1000,
+    500,
+  ];
 
   @override
   void initState() {
@@ -66,6 +88,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
       ),
     );
     _loadOperationOrderPreference();
+    _lastTickRemainingMs = _taProvider.state.remainingMs;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _taProvider.startRun();
     });
@@ -92,11 +115,35 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
 
   void _onTaChanged() {
     if (!mounted) return;
+    _syncEndTicks(_taProvider.state);
     if (_taProvider.state.isFinished &&
         !_taProvider.state.isTransitioning &&
         !_navigatedToResult) {
       _goToResult();
     }
+  }
+
+  void _syncEndTicks(TimeAttackRunState state) {
+    final remaining = state.remainingMs;
+    if (remaining > _lastTickRemainingMs) {
+      _playedTickMarks.removeWhere((mark) => mark <= remaining);
+    }
+    _lastTickRemainingMs = remaining;
+    if (!state.isTimerRunning || state.isFinished || state.isTransitioning) {
+      return;
+    }
+
+    int? due;
+    for (final mark in _tickMarksMs) {
+      if (remaining <= mark && !_playedTickMarks.contains(mark)) {
+        due = mark;
+      }
+    }
+    if (due == null) return;
+    for (final mark in _tickMarksMs) {
+      if (mark >= due) _playedTickMarks.add(mark);
+    }
+    SoundEffects.instance.challengeTick();
   }
 
   @override
@@ -324,7 +371,11 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     final ta = _taProvider.state;
     if (!ta.canInteract || _handlingClear) return;
     if (!_canApplyGate()) return;
-    SoundEffects.instance.apply();
+    playGateApplySound(
+      _gameProvider.gameState,
+      _selectedGate!,
+      _selectedPositions,
+    );
 
     final success =
         await _gameProvider.applyGate(_selectedGate!, _selectedPositions);

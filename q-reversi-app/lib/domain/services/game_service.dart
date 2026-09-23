@@ -189,6 +189,22 @@ class GameService {
       turnCount: newState.turnCount + 1,
     );
   }
+
+  /// この適用で、新しいエンタングル駒ができるか。
+  bool createsEntangledPiece(
+    GameState gameState,
+    GateType gate,
+    List<Position> targetPositions,
+  ) {
+    final before = <String>{
+      for (final pair in gameState.entangledPairs) pair.id,
+    };
+    final after = applyGateWithFullLogic(gameState, gate, targetPositions);
+    for (final pair in after.entangledPairs) {
+      if (!before.contains(pair.id)) return true;
+    }
+    return false;
+  }
   
   /// [GateService] の行／列走査と同じ順序で、適用前にエンタングルで止まり1マスも変えられないか。
   bool _oneBitLineStoppedByEntanglementWithNoApply(

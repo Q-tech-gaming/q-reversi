@@ -74,6 +74,12 @@ class SoundEffects {
 
   void apply() => unawaited(_startPlayback(_Sfx.apply));
 
+  void entanglement() => unawaited(_startPlayback(_Sfx.entanglement));
+
+  void challengeStart() => unawaited(_startPlayback(_Sfx.challengeStart));
+
+  void challengeTick() => unawaited(_startPlayback(_Sfx.challengeTick));
+
   void challengeThreeStar() =>
       unawaited(_startPlayback(_Sfx.challengeThreeStar));
 
@@ -146,6 +152,9 @@ enum _Sfx {
   click('sounds/sfx/click.mp3'),
   gateSelect('sounds/sfx/gate_select.mp3'),
   apply('sounds/sfx/apply.mp3'),
+  entanglement('sounds/sfx/entanglement.mp3'),
+  challengeStart('sounds/sfx/challenge_start.mp3'),
+  challengeTick('sounds/sfx/challenge_tick.mp3'),
   challengeThreeStar('sounds/sfx/challange_3star.mp3'),
   challengeClear('sounds/sfx/challange_clear.mp3'),
   timeAttackFinish('sounds/sfx/timeAttack_finish.mp3'),

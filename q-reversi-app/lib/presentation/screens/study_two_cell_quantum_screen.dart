@@ -380,7 +380,6 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
     final board = _displayBoard;
     final targets = _resolveTargetPositions(board);
     if (targets == null || targets.isEmpty) return;
-    SoundEffects.instance.apply();
 
     final next = List<QComplex>.from(_amplitudes);
 
@@ -401,6 +400,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
       }
     }
 
+    _playApplySound(next);
     setState(() {
       _amplitudes = _normalize(next);
       _selectedGate = null;
@@ -409,6 +409,19 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
       _selectedRowDirection = null;
       _entangledErrorMessage = null;
     });
+  }
+
+  void _playApplySound(List<QComplex> next) {
+    final before = StudyTwoCellPieceDisplay.fromAmplitudes(_amplitudes);
+    final after = StudyTwoCellPieceDisplay.fromAmplitudes(next);
+    final created =
+        (!before.left.isEntangled && after.left.isEntangled) ||
+        (!before.right.isEntangled && after.right.isEntangled);
+    if (created) {
+      SoundEffects.instance.entanglement();
+    } else {
+      SoundEffects.instance.apply();
+    }
   }
 
   List<QComplex> _normalize(List<QComplex> values) {
