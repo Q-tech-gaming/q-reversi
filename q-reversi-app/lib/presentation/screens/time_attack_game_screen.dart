@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -53,6 +55,10 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   bool _handlingClear = false;
   bool _navigatedToResult = false;
   late final BgmHandle _bgm;
+  Timer? _countdownTimer;
+
+  /// 3, 2, 1。0 になったら制限時間を進める。
+  int _countdownValue = 3;
   int _lastTickRemainingMs = 0;
   final Set<int> _playedTickMarks = {};
 
@@ -89,10 +95,28 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     );
     _loadOperationOrderPreference();
     _lastTickRemainingMs = _taProvider.state.remainingMs;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _taProvider.startRun();
-    });
     _taProvider.addListener(_onTaChanged);
+    _startOpeningCountdown();
+  }
+
+  bool get _isCountingDown => _countdownValue > 0;
+
+  void _startOpeningCountdown() {
+    SoundEffects.instance.challengeStart();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_countdownValue <= 1) {
+        timer.cancel();
+        _countdownTimer = null;
+        setState(() => _countdownValue = 0);
+        _taProvider.startRun();
+        return;
+      }
+      setState(() => _countdownValue -= 1);
+    });
   }
 
   Future<void> _loadOperationOrderPreference() async {
@@ -155,6 +179,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _bgm.release();
     _taProvider.removeListener(_onTaChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -667,142 +692,174 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
               onPressed: () => _confirmExit(context),
             ),
           ),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0A0E27), Color(0xFF1A1F3A)],
-              ),
-            ),
-            child: Consumer2<TimeAttackProvider, GameProvider>(
-              builder: (context, ta, game, _) {
-                final run = ta.state;
-                final boardState = game.gameState;
-                final level = run.currentLevel;
+          body: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF0A0E27), Color(0xFF1A1F3A)],
+                  ),
+                ),
+                child: Consumer2<TimeAttackProvider, GameProvider>(
+                  builder: (context, ta, game, _) {
+                    final run = ta.state;
+                    final boardState = game.gameState;
+                    final level = run.currentLevel;
 
-                return SafeArea(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: ConstrainedBox(
-                          constraints:
-                              BoxConstraints(minHeight: constraints.maxHeight),
-                          child: Column(
-                            children: [
-                              _buildHud(run, boardState.turnCount,
-                                  level.optimalTurns),
-                              const SizedBox(height: 8),
-                              Text(
-                                'ゴール: ${level.victoryCondition.displayName}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxHeight: constraints.maxHeight * 0.48,
-                                  maxWidth: constraints.maxWidth,
-                                ),
-                                child: Center(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: AbsorbPointer(
-                                      absorbing: !run.canInteract,
-                                      child: BoardWidget(
-                                        board: boardState.board,
-                                        selectedPositions: _selectedPositions,
-                                        highlightedPositions:
-                                            _getAdjacentPositions(
-                                          boardState.board,
+                    return SafeArea(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(12),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight),
+                              child: Column(
+                                children: [
+                                  _buildHud(run, boardState.turnCount,
+                                      level.optimalTurns),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'ゴール: ${level.victoryCondition.displayName}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: constraints.maxHeight * 0.48,
+                                      maxWidth: constraints.maxWidth,
+                                    ),
+                                    child: Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: AbsorbPointer(
+                                          absorbing: !run.canInteract,
+                                          child: BoardWidget(
+                                            board: boardState.board,
+                                            selectedPositions:
+                                                _selectedPositions,
+                                            highlightedPositions:
+                                                _getAdjacentPositions(
+                                              boardState.board,
+                                            ),
+                                            lastTwoBitGatePositions: const [],
+                                            enableRowColumnButtons: true,
+                                            selectedGate: _selectedGate,
+                                            selectedRows: _selectedRow != null
+                                                ? {_selectedRow!: true}
+                                                : {},
+                                            selectedColumns:
+                                                _selectedColumn != null
+                                                    ? {_selectedColumn!: true}
+                                                    : {},
+                                            onPositionTap: (position) {
+                                              _handleCellTap(
+                                                position.row,
+                                                position.col,
+                                              );
+                                            },
+                                            onRowSelected: (row, _) {
+                                              _handleRowButtonTap(row);
+                                            },
+                                            onColumnSelected: (col, _) {
+                                              _handleColumnButtonTap(col);
+                                            },
+                                          ),
                                         ),
-                                        lastTwoBitGatePositions: const [],
-                                        enableRowColumnButtons: true,
-                                        selectedGate: _selectedGate,
-                                        selectedRows: _selectedRow != null
-                                            ? {_selectedRow!: true}
-                                            : {},
-                                        selectedColumns: _selectedColumn != null
-                                            ? {_selectedColumn!: true}
-                                            : {},
-                                        onPositionTap: (position) {
-                                          _handleCellTap(
-                                            position.row,
-                                            position.col,
-                                          );
-                                        },
-                                        onRowSelected: (row, _) {
-                                          _handleRowButtonTap(row);
-                                        },
-                                        onColumnSelected: (col, _) {
-                                          _handleColumnButtonTap(col);
-                                        },
                                       ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(height: 12),
+                                  _buildGateButtons(level.availableGates),
+                                  if (_errorMessage != null) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(
+                                          color: Colors.redAccent),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  ElevatedButton(
+                                    onPressed:
+                                        run.canInteract && _canApplyGate()
+                                            ? _applyGate
+                                            : null,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4CAF50),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'ゲートを適用',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed:
+                                        run.canInteract ? _resetLevel : null,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey.shade700,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'リセット',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 12),
-                              _buildGateButtons(level.availableGates),
-                              if (_errorMessage != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  _errorMessage!,
-                                  style:
-                                      const TextStyle(color: Colors.redAccent),
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: run.canInteract && _canApplyGate()
-                                    ? _applyGate
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4CAF50),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                    vertical: 14,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'ゲートを適用',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: run.canInteract ? _resetLevel : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey.shade700,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                    vertical: 14,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'リセット',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (_isCountingDown) _buildCountdownOverlay(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCountdownOverlay() {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: const Color(0xFF0A0E27),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Text(
+              '$_countdownValue',
+              key: ValueKey(_countdownValue),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 128,
+                fontWeight: FontWeight.bold,
+                height: 1,
+              ),
             ),
           ),
         ),
