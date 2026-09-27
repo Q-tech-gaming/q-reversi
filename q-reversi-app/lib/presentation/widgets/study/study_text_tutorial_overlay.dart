@@ -46,20 +46,47 @@ class StudyTextTutorialOverlay extends StatefulWidget {
 class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
   static const String _diffCircuitToken = '[Diff = H→X→CCZ→X→H]';
   final GlobalKey _bubbleMeasureKey = GlobalKey();
+  final ScrollController _bubbleScrollController = ScrollController();
   double _measuredBubbleHeight = 220;
+  bool _bubbleScrollable = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureBubbleHeight());
+    _scheduleBubbleMetrics();
   }
 
   @override
   void didUpdateWidget(covariant StudyTextTutorialOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.step != widget.step) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _measureBubbleHeight());
+      if (_bubbleScrollController.hasClients) {
+        _bubbleScrollController.jumpTo(0);
+      }
+      _scheduleBubbleMetrics();
     }
+  }
+
+  @override
+  void dispose() {
+    _bubbleScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scheduleBubbleMetrics() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureBubbleHeight();
+      _syncBubbleScrollbar();
+    });
+  }
+
+  void _syncBubbleScrollbar() {
+    if (!mounted || !_bubbleScrollController.hasClients) return;
+    final scrollable = _bubbleScrollController.position.maxScrollExtent > 0.5;
+    if (scrollable == _bubbleScrollable) return;
+    setState(() {
+      _bubbleScrollable = scrollable;
+    });
   }
 
   void _measureBubbleHeight() {
@@ -163,6 +190,46 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
           height: 86,
           child: CustomPaint(
             painter: _DiffCircuitPainter(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 本文1行ぶんだけ最大高さを広げる。短い端末では末尾のボタンが初期表示から隠れる。
+  double _extraBubbleLineHeight(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return 15.0 * 1.5 * scale;
+  }
+
+  Widget _buildScrollableBubble() {
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis != Axis.vertical) return false;
+        final scrollable = notification.metrics.maxScrollExtent > 0.5;
+        if (scrollable != _bubbleScrollable) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || scrollable == _bubbleScrollable) return;
+            setState(() => _bubbleScrollable = scrollable);
+          });
+        }
+        return false;
+      },
+      child: ScrollbarTheme(
+        data: ScrollbarThemeData(
+          thumbVisibility: WidgetStateProperty.all(_bubbleScrollable),
+          thickness: WidgetStateProperty.all(4),
+          radius: const Radius.circular(8),
+          thumbColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.8)),
+          crossAxisMargin: 2,
+          mainAxisMargin: 10,
+        ),
+        child: Scrollbar(
+          controller: _bubbleScrollController,
+          child: SingleChildScrollView(
+            controller: _bubbleScrollController,
+            primary: false,
+            child: _buildBubble(),
           ),
         ),
       ),
@@ -313,17 +380,23 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
               ),
             ),
             if (rect == null)
-              Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: bubbleWidth,
-                    minWidth: bubbleWidth,
-                    maxHeight: screen.height * 0.7,
-                  ),
-                  child: SingleChildScrollView(
-                    child: _buildBubble(),
-                  ),
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxHeight = math.min(
+                    screen.height * 0.7 + _extraBubbleLineHeight(context),
+                    constraints.maxHeight,
+                  );
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: bubbleWidth,
+                        minWidth: bubbleWidth,
+                        maxHeight: maxHeight,
+                      ),
+                      child: _buildScrollableBubble(),
+                    ),
+                  );
+                },
               )
             else ...[
               Builder(
@@ -380,9 +453,7 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
                         children: [
                           ConstrainedBox(
                             constraints: BoxConstraints(maxHeight: bubbleMaxHeight),
-                            child: SingleChildScrollView(
-                              child: _buildBubble(),
-                            ),
+                            child: _buildScrollableBubble(),
                           ),
                         ],
                       ),

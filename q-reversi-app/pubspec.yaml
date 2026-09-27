@@ -3,7 +3,7 @@ description: Q-Reversi - Quantum Computing Reversi Game
 repository: https://github.com/q-tech-gaming/q-reversi
 homepage: https://q-tech-gaming.github.io/q-reversi/
 publish_to: 'none'
-version: 1.4.8+14
+version: 1.5.0+15
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -54,10 +54,9 @@ flutter:
     - assets/
     - assets/sounds/sfx/
     - assets/sounds/bgm/
-    - assets/QuantumComputer.png
     - assets/PC_img.png
     - assets/QC_img.png
-    - assets/QC_and_Othello.png
+    - assets/QC_and_Othello.jpg
     - assets/whiteLine.png
     - assets/whiteDotArrow.png
     - assets/gateExample.png
@@ -73,7 +72,6 @@ flutter:
     - assets/entanglement.png
     - assets/blackCNOT_all.png
     - assets/whiteCNOT_all.png
-    - assets/coinToss.mp4
     - q-reversi_challange-mode.csv
 
 flutter_launcher_icons:

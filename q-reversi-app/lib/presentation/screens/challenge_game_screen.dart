@@ -1315,6 +1315,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   Future<void> _handleVictory(BuildContext context, GameState state) async {
     final turnsUsed = state.turnCount;
     final stars = _calculateStars(turnsUsed, widget.level.optimalTurns);
+    final showClear = Future<void>.delayed(const Duration(milliseconds: 700));
 
     // 進捗を保存（サービス内で最新を再読込してからマージ）
     await context.read<ChallengeProgressNotifier>().completeLevel(
@@ -1326,6 +1327,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     if (mounted) {
       final nextLevel = await _findNextLevel();
       if (!mounted) return;
+      await showClear;
+      if (!mounted || !context.mounted) return;
       if (stars >= 3) {
         SoundEffects.instance.challengeThreeStar();
       } else {

@@ -22,6 +22,9 @@ import '../widgets/board_widget.dart';
 import '../widgets/gate_button.dart';
 import 'time_attack_result_screen.dart';
 
+/// 残り10秒の警告音と、残り5秒の警告音。
+enum _WarningTick { none, ten, five }
+
 class TimeAttackGameScreen extends StatefulWidget {
   final List<ChallengeLevel> sequence;
   final String? runId;
@@ -56,30 +59,15 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   bool _navigatedToResult = false;
   late final BgmHandle _bgm;
   Timer? _countdownTimer;
+  bool _openingCountdown = true;
 
-  /// 3, 2, 1。0 になったら制限時間を進める。
+  /// 音声の出だしが少し遅れるので、数字は 0.1 秒送らせてから出す。
+  bool _showCountdownDigit = false;
+
+  /// 3, 2, 1。カウントが終わったら制限時間を進める。
   int _countdownValue = 3;
   int _lastTickRemainingMs = 0;
-  final Set<int> _playedTickMarks = {};
-
-  /// 終了10秒前は1秒ごと、5秒前は0.5秒ごと。
-  static const List<int> _tickMarksMs = [
-    10000,
-    9000,
-    8000,
-    7000,
-    6000,
-    5000,
-    4500,
-    4000,
-    3500,
-    3000,
-    2500,
-    2000,
-    1500,
-    1000,
-    500,
-  ];
+  _WarningTick _warningTick = _WarningTick.none;
 
   @override
   void initState() {
@@ -99,23 +87,27 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     _startOpeningCountdown();
   }
 
-  bool get _isCountingDown => _countdownValue > 0;
+  bool get _isCountingDown => _openingCountdown;
 
   void _startOpeningCountdown() {
     SoundEffects.instance.challengeStart();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_countdownValue <= 1) {
-        timer.cancel();
-        _countdownTimer = null;
-        setState(() => _countdownValue = 0);
-        _taProvider.startRun();
-        return;
-      }
-      setState(() => _countdownValue -= 1);
+    _countdownTimer = Timer(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      setState(() => _showCountdownDigit = true);
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_countdownValue <= 1) {
+          timer.cancel();
+          _countdownTimer = null;
+          setState(() => _openingCountdown = false);
+          _taProvider.startRun();
+          return;
+        }
+        setState(() => _countdownValue -= 1);
+      });
     });
   }
 
@@ -149,25 +141,47 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
 
   void _syncEndTicks(TimeAttackRunState state) {
     final remaining = state.remainingMs;
-    if (remaining > _lastTickRemainingMs) {
-      _playedTickMarks.removeWhere((mark) => mark <= remaining);
-    }
+    final increased = remaining > _lastTickRemainingMs;
     _lastTickRemainingMs = remaining;
-    if (!state.isTimerRunning || state.isFinished || state.isTransitioning) {
+
+    if (state.isFinished || remaining <= 0) {
+      _applyWarningTick(_WarningTick.none);
       return;
     }
 
-    int? due;
-    for (final mark in _tickMarksMs) {
-      if (remaining <= mark && !_playedTickMarks.contains(mark)) {
-        due = mark;
-      }
+    // クリア演出中は秒数を止めている。tick も一度止めて、再開まで鳴らさない。
+    if (state.isTransitioning || !state.isTimerRunning) {
+      _applyWarningTick(_WarningTick.none);
+      return;
     }
-    if (due == null) return;
-    for (final mark in _tickMarksMs) {
-      if (mark >= due) _playedTickMarks.add(mark);
+
+    final zone = _warningZone(remaining);
+    if (increased || zone != _warningTick) {
+      _applyWarningTick(zone, fromHead: zone != _WarningTick.none);
     }
-    SoundEffects.instance.challengeTick();
+  }
+
+  /// 10秒ちょうどまでが tick10、5秒ちょうどまでが tick5。
+  _WarningTick _warningZone(int remainingMs) {
+    if (remainingMs <= 0 || remainingMs > 10000) return _WarningTick.none;
+    if (remainingMs <= 5000) return _WarningTick.five;
+    return _WarningTick.ten;
+  }
+
+  void _applyWarningTick(_WarningTick zone, {bool fromHead = false}) {
+    if (!fromHead && zone == _warningTick) return;
+    _warningTick = zone;
+    if (zone != _WarningTick.ten) {
+      SoundEffects.instance.stopTimeAttackTick10();
+    }
+    if (zone != _WarningTick.five) {
+      SoundEffects.instance.stopTimeAttackTick5();
+    }
+    if (zone == _WarningTick.ten) {
+      SoundEffects.instance.timeAttackTick10();
+    } else if (zone == _WarningTick.five) {
+      SoundEffects.instance.timeAttackTick5();
+    }
   }
 
   @override
@@ -180,6 +194,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    SoundEffects.instance.stopTimeAttackTick10();
+    SoundEffects.instance.stopTimeAttackTick5();
     _bgm.release();
     _taProvider.removeListener(_onTaChanged);
     WidgetsBinding.instance.removeObserver(this);
@@ -849,19 +865,21 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
       child: ColoredBox(
         color: const Color(0xFF0A0E27),
         child: Center(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: Text(
-              '$_countdownValue',
-              key: ValueKey(_countdownValue),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 128,
-                fontWeight: FontWeight.bold,
-                height: 1,
-              ),
-            ),
-          ),
+          child: _showCountdownDigit
+              ? AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: Text(
+                    '$_countdownValue',
+                    key: ValueKey(_countdownValue),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 128,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
     );

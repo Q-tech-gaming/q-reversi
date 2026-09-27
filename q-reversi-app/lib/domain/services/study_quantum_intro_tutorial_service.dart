@@ -14,7 +14,7 @@ class StudyQuantumIntroTutorialService {
         ],
         visualElement: TutorialVisualElement(
           type: VisualElementType.image,
-          data: {'path': 'assets/Quantum.png'},
+          data: {'path': 'assets/Quantum.jpg'},
         ),
       ),
       TutorialSlide(

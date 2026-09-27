@@ -78,7 +78,13 @@ class SoundEffects {
 
   void challengeStart() => unawaited(_startPlayback(_Sfx.challengeStart));
 
-  void challengeTick() => unawaited(_startPlayback(_Sfx.challengeTick));
+  void timeAttackTick10() => unawaited(_startPlayback(_Sfx.timeAttackTick10));
+
+  void stopTimeAttackTick10() => _stop(_Sfx.timeAttackTick10);
+
+  void timeAttackTick5() => unawaited(_startPlayback(_Sfx.timeAttackTick5));
+
+  void stopTimeAttackTick5() => _stop(_Sfx.timeAttackTick5);
 
   void challengeThreeStar() =>
       unawaited(_startPlayback(_Sfx.challengeThreeStar));
@@ -92,6 +98,13 @@ class SoundEffects {
   void vsWin() => unawaited(_startPlayback(_Sfx.vsWin));
 
   void vsLose() => unawaited(_startPlayback(_Sfx.vsLose));
+
+  void _stop(_Sfx sfx) {
+    final player = _players[sfx];
+    if (player == null) return;
+    _playToken[sfx] = (_playToken[sfx] ?? 0) + 1;
+    unawaited(player.stop());
+  }
 
   /// 効果音全体の音量を変える。
   void setVolume(double volume) {
@@ -152,9 +165,10 @@ enum _Sfx {
   click('sounds/sfx/click.mp3'),
   gateSelect('sounds/sfx/gate_select.mp3'),
   apply('sounds/sfx/apply.mp3'),
-  entanglement('sounds/sfx/entanglement.mp3'),
+  entanglement('sounds/sfx/entanglement3.mp3'),
   challengeStart('sounds/sfx/challenge_start.mp3'),
-  challengeTick('sounds/sfx/challenge_tick.mp3'),
+  timeAttackTick10('sounds/sfx/timeAttack_tick10.mp3'),
+  timeAttackTick5('sounds/sfx/timeAttack_tick5.mp3'),
   challengeThreeStar('sounds/sfx/challange_3star.mp3'),
   challengeClear('sounds/sfx/challange_clear.mp3'),
   timeAttackFinish('sounds/sfx/timeAttack_finish.mp3'),

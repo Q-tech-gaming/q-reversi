@@ -2,11 +2,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// BGM と効果音の音量。どちらも 0.0〜1.0。
 class AudioVolumePreferenceService {
-  static const bgmKey = 'bgm_volume_v2';
+  static const bgmKey = 'bgm_volume_v3';
   static const sfxKey = 'sfx_volume';
 
   /// 設定画面の 100%。実際の出力は、この値の 50%（home_bgm はその半分）。
-  static const defaultBgm = 1.0;
+  /// 初期値は設定画面の 50%。
+  static const defaultBgm = 0.5;
   static const defaultSfx = 1.0;
 
   Future<double> bgmVolume() async => _read(bgmKey, defaultBgm);
