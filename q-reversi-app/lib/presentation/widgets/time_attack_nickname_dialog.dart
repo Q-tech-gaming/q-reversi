@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/services/time_attack_local_profile_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// プレイヤー名入力ダイアログ。保存成功で true、キャンセルで false。
 Future<bool> showTimeAttackNicknameDialog(
   BuildContext context, {
   String? initialName,
   Iterable<String> takenNames = const [],
-  String title = 'プレイヤー名を変更',
-  String confirmLabel = '保存',
+  String? title,
+  String? confirmLabel,
 }) async {
   final result = await showDialog<bool>(
     context: context,
@@ -34,8 +35,8 @@ class _NicknameDialog extends StatefulWidget {
 
   final String initialName;
   final Iterable<String> takenNames;
-  final String title;
-  final String confirmLabel;
+  final String? title;
+  final String? confirmLabel;
 
   @override
   State<_NicknameDialog> createState() => _NicknameDialogState();
@@ -64,8 +65,10 @@ class _NicknameDialogState extends State<_NicknameDialog> {
         TimeAttackLocalProfileService.validateNickname(_controller.text);
     if (validated == null) {
       setState(() {
-        _error =
-            '${TimeAttackLocalProfileService.minNicknameLength}〜${TimeAttackLocalProfileService.maxNicknameLength}文字で入力してください';
+        _error = AppLocalizations.of(context).nicknameLengthError(
+          TimeAttackLocalProfileService.minNicknameLength,
+          TimeAttackLocalProfileService.maxNicknameLength,
+        );
       });
       return;
     }
@@ -81,14 +84,17 @@ class _NicknameDialogState extends State<_NicknameDialog> {
     );
     if (!mounted) return;
     if (result != NicknameSetResult.ok) {
+      final l10n = AppLocalizations.of(context);
       setState(() {
         _saving = false;
         _error = switch (result) {
-          NicknameSetResult.invalid =>
-            '${TimeAttackLocalProfileService.minNicknameLength}〜${TimeAttackLocalProfileService.maxNicknameLength}文字で入力してください',
-          NicknameSetResult.taken => 'その名前はすでに使われています',
-          NicknameSetResult.blocked => '使用できない言葉が含まれています',
-          NicknameSetResult.failed => '保存に失敗しました',
+          NicknameSetResult.invalid => l10n.nicknameLengthError(
+              TimeAttackLocalProfileService.minNicknameLength,
+              TimeAttackLocalProfileService.maxNicknameLength,
+            ),
+          NicknameSetResult.taken => l10n.nicknameTaken,
+          NicknameSetResult.blocked => l10n.nicknameBlocked,
+          NicknameSetResult.failed => l10n.nicknameSaveFailed,
           NicknameSetResult.ok => null,
         };
       });
@@ -99,10 +105,11 @@ class _NicknameDialogState extends State<_NicknameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
       backgroundColor: const Color(0xFF1A1F3A),
       title: Text(
-        widget.title,
+        widget.title ?? l10n.nicknameChangeTitle,
         style: const TextStyle(color: Colors.white),
       ),
       content: Column(
@@ -118,7 +125,7 @@ class _NicknameDialogState extends State<_NicknameDialog> {
               FilteringTextInputFormatter.deny(RegExp(r'[\n\r]')),
             ],
             decoration: InputDecoration(
-              hintText: 'ニックネーム',
+              hintText: l10n.nicknameHint,
               hintStyle: const TextStyle(color: Colors.white38),
               counterStyle: const TextStyle(color: Colors.white38),
               enabledBorder: OutlineInputBorder(
@@ -137,7 +144,8 @@ class _NicknameDialogState extends State<_NicknameDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: const Text('あとで', style: TextStyle(color: Colors.white54)),
+          child: Text(l10n.later,
+              style: const TextStyle(color: Colors.white54)),
         ),
         ElevatedButton(
           onPressed: _saving ? null : _submit,
@@ -154,7 +162,7 @@ class _NicknameDialogState extends State<_NicknameDialog> {
                     color: Colors.white,
                   ),
                 )
-              : Text(widget.confirmLabel),
+              : Text(widget.confirmLabel ?? l10n.save),
         ),
       ],
     );

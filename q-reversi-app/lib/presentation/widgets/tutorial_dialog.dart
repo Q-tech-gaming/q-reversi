@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/tutorial_content.dart';
 import '../../domain/entities/gate_type.dart';
+import '../../l10n/app_localizations.dart';
 import 'tutorial_operation_demo.dart';
 
 /// チュートリアルダイアログ
@@ -135,9 +136,9 @@ class _TutorialDialogState extends State<TutorialDialog>
                     onPressed: () {
                       widget.onComplete();
                     },
-                    child: const Text(
-                      'スキップ',
-                      style: TextStyle(color: Colors.white70),
+                    child: Text(
+                      AppLocalizations.of(context).skip,
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   ),
                   ElevatedButton(
@@ -154,7 +155,9 @@ class _TutorialDialogState extends State<TutorialDialog>
                       ),
                     ),
                     child: Text(
-                      isLast ? '理解しました' : '次へ',
+                      isLast
+                          ? AppLocalizations.of(context).tutorialUnderstood
+                          : AppLocalizations.of(context).next,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../piece_widget.dart';
 import '../../../domain/entities/piece.dart';
 import '../../../domain/entities/piece_type.dart';
@@ -108,9 +109,9 @@ class TutorialCnotGrayAnimation extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'グレー制御ビットが50%で白、50%で黒',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).tutorialCnotGrayControlNote,
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
             ),

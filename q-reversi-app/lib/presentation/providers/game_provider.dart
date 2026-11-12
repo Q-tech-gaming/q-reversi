@@ -13,6 +13,9 @@ import '../../domain/services/ai_service.dart';
 
 /// ゲームプロバイダー
 class GameProvider extends ChangeNotifier {
+  /// UI 側で [AppLocalizations.errorGateApplyFailedForbidden] にマップする。
+  static const String gateApplyForbiddenErrorCode = 'gate_apply_forbidden';
+
   static const int _maxHistoryLength = 60;
   
   GameState _gameState;
@@ -79,7 +82,7 @@ class GameProvider extends ChangeNotifier {
       }
       
       if (isFailed) {
-        _errorMessage = 'ゲートを適用できませんでした（禁止領域またはエンタングル状態のため）';
+        _errorMessage = gateApplyForbiddenErrorCode;
         _isProcessing = false;
         notifyListeners();
         return false;

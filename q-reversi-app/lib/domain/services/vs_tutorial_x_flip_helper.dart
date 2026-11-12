@@ -71,7 +71,12 @@ class VsTutorialXFlipHelper {
   }
 
   /// 行・列を優先して、自分の駒の純増が最大の候補を返す
-  static VsTutorialBestTarget findBestTarget(Board board) {
+  static VsTutorialBestTarget findBestTarget(
+    Board board, {
+    required String Function(int n) rowLabel,
+    required String Function(int n) columnLabel,
+    required String Function(int row, int col) fourCellsLabel,
+  }) {
     VsTutorialBestTarget? best;
 
     void consider({
@@ -103,7 +108,7 @@ class VsTutorialXFlipHelper {
         kind: VsTutorialTargetKind.row,
         row: r,
         positions: positions,
-        label: '${r + 1}行目',
+        label: rowLabel(r + 1),
       );
     }
     for (int c = 0; c < board.cols; c++) {
@@ -114,7 +119,7 @@ class VsTutorialXFlipHelper {
         kind: VsTutorialTargetKind.column,
         column: c,
         positions: positions,
-        label: '${c + 1}列目',
+        label: columnLabel(c + 1),
       );
     }
 
@@ -133,7 +138,7 @@ class VsTutorialXFlipHelper {
           consider(
             kind: VsTutorialTargetKind.fourPieces,
             positions: positions,
-            label: '${r + 1}行${c + 1}列付近の4マス',
+            label: fourCellsLabel(r + 1, c + 1),
           );
         }
       }
@@ -146,7 +151,7 @@ class VsTutorialXFlipHelper {
           positions: [for (int c = 0; c < board.cols; c++) Position(0, c)],
           netGain: 0,
           blackFlips: 0,
-          label: '1行目',
+          label: rowLabel(1),
         );
   }
 

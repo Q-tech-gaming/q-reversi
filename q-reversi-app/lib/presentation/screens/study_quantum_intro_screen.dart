@@ -3,6 +3,7 @@ import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/services/study_quantum_intro_tutorial_service.dart';
 import '../../domain/entities/tutorial_content.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/tutorial/tutorial_visual_element_widget.dart';
 
 /// スタディ「量子コンピュータとは？」— チュートリアルと同じ表示形式（指定ページの抜粋）
@@ -24,8 +25,16 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
   void initState() {
     super.initState();
     _bgm = BgmHandle.hold(Bgm.study);
-    _pages = StudyQuantumIntroTutorialService.getPages();
     _pageController = PageController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ロケール変更時にも文言を作り直す（スライド数・順序は不変）。
+    _pages = StudyQuantumIntroTutorialService.getPages(
+      Localizations.localeOf(context),
+    );
   }
 
   @override
@@ -73,9 +82,9 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E27),
       appBar: AppBar(
-        title: const Text(
-          '量子コンピュータとは？',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          AppLocalizations.of(context).studyMenuIntro,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -190,6 +199,7 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
   }
 
   Widget _buildNavigationButtons() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       height: kToolbarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -207,9 +217,9 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
         children: [
           TextButton(
             onPressed: _isFirstPage ? null : _previousPage,
-            child: const Text(
-              '前へ',
-              style: TextStyle(color: Colors.white70),
+            child: Text(
+              l10n.previous,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
           TextButton(
@@ -219,9 +229,9 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
               if (!context.mounted) return;
               navigator.pop();
             },
-            child: const Text(
-              'スキップ',
-              style: TextStyle(color: Colors.white70),
+            child: Text(
+              l10n.skip,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
           ElevatedButton(
@@ -235,7 +245,7 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
               ),
             ),
             child: Text(
-              _isLastPage ? '閉じる' : '次へ',
+              _isLastPage ? l10n.close : l10n.next,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

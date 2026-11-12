@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../domain/entities/piece_type.dart';
 
 /// 図解ウィジェット
@@ -16,15 +17,15 @@ class TutorialDiagramWidget extends StatelessWidget {
 
     switch (diagramType) {
       case 'entanglement':
-        return _buildEntanglementDiagram();
+        return _buildEntanglementDiagram(context);
       case 'cnot_patterns':
-        return _buildCnotPatternsDiagram();
+        return _buildCnotPatternsDiagram(context);
       case 'measurement':
-        return _buildMeasurementDiagram();
+        return _buildMeasurementDiagram(context);
       case 'gray_piece_equals_video':
         return _buildGrayPieceEqualsVideo();
       case 'piece_kinds':
-        return _buildPieceKindsDiagram();
+        return _buildPieceKindsDiagram(context);
       default:
         return Container(
           height: 200,
@@ -35,17 +36,17 @@ class TutorialDiagramWidget extends StatelessWidget {
               color: Colors.white.withOpacity(0.2),
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              '図解',
-              style: TextStyle(color: Colors.white70),
+              AppLocalizations.of(context).tutorialDiagramLabel,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
         );
     }
   }
 
-  Widget _buildEntanglementDiagram() {
+  Widget _buildEntanglementDiagram(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -66,9 +67,9 @@ class TutorialDiagramWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'エンタングル状態',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).tutorialEntangledState,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
             ),
@@ -130,7 +131,8 @@ class TutorialDiagramWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildCnotPatternsDiagram() {
+  Widget _buildCnotPatternsDiagram(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final mode = data?['mode'] as String? ?? 'normal';
     
     return Container(
@@ -139,7 +141,9 @@ class TutorialDiagramWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            mode == 'normal' ? '通常パターン' : 'VSモード白プレイヤー',
+            mode == 'normal'
+                ? l10n.tutorialCnotPatternNormal
+                : l10n.tutorialCnotPatternVsWhite,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -147,9 +151,9 @@ class TutorialDiagramWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'パターン一覧（詳細は実装中）',
-            style: TextStyle(
+          Text(
+            l10n.tutorialPatternListPending,
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 14,
             ),
@@ -159,7 +163,7 @@ class TutorialDiagramWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMeasurementDiagram() {
+  Widget _buildMeasurementDiagram(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // 画面幅と高さに応じてサイズを調整
@@ -192,6 +196,7 @@ class TutorialDiagramWidget extends StatelessWidget {
             children: [
               // パターン1: グレー → 測定 → 白
               _buildMeasurementFlow(
+                context: context,
                 imagePath: 'assets/mesurement.png',
                 resultPieceType: PieceType.white,
                 pieceSize: pieceSize,
@@ -204,6 +209,7 @@ class TutorialDiagramWidget extends StatelessWidget {
               
               // パターン2: グレー → 測定 → 黒
               _buildMeasurementFlow(
+                context: context,
                 imagePath: 'assets/mesurement.png',
                 resultPieceType: PieceType.black,
                 pieceSize: pieceSize,
@@ -219,6 +225,7 @@ class TutorialDiagramWidget extends StatelessWidget {
   }
 
   Widget _buildMeasurementFlow({
+    required BuildContext context,
     required String imagePath,
     required PieceType resultPieceType,
     required double pieceSize,
@@ -296,7 +303,7 @@ class TutorialDiagramWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '測定',
+                    AppLocalizations.of(context).measure,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: imageSize * 0.2,
@@ -494,7 +501,10 @@ class TutorialDiagramWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildPieceKindsDiagram() {
+  Widget _buildPieceKindsDiagram(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // 全角コロンは日本語のみ。英語は半角コロン+スペース。
+    final colon = Localizations.localeOf(context).languageCode == 'ja' ? '：' : ': ';
     final variant = data?['variant'] as String?;
     final braKet = variant == 'bra_ket';
     return LayoutBuilder(
@@ -518,9 +528,13 @@ class TutorialDiagramWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildPieceKindsPair(
-                leftLabel: braKet ? '白 |\u20600\u2060⟩：' : '白：',
+                leftLabel: braKet
+                    ? '${l10n.pieceWhite} |\u20600\u2060⟩$colon'
+                    : '${l10n.pieceWhite}$colon',
                 leftType: PieceType.white,
-                rightLabel: braKet ? '黒 |\u20601\u2060⟩：' : '黒：',
+                rightLabel: braKet
+                    ? '${l10n.pieceBlack} |\u20601\u2060⟩$colon'
+                    : '${l10n.pieceBlack}$colon',
                 rightType: PieceType.black,
                 horizontalGap: horizontalGap,
                 labelFontSize: labelFontSize,
@@ -528,9 +542,13 @@ class TutorialDiagramWidget extends StatelessWidget {
               ),
               SizedBox(height: verticalGap),
               _buildPieceKindsPair(
-                leftLabel: braKet ? 'グレープラス |\u2060+\u2060⟩：' : 'グレープラス：',
+                leftLabel: braKet
+                    ? '${l10n.pieceGrayPlus} |\u2060+\u2060⟩$colon'
+                    : '${l10n.pieceGrayPlus}$colon',
                 leftType: PieceType.grayPlus,
-                rightLabel: braKet ? 'グレーマイナス |\u2060-\u2060⟩：' : 'グレーマイナス：',
+                rightLabel: braKet
+                    ? '${l10n.pieceGrayMinus} |\u2060-\u2060⟩$colon'
+                    : '${l10n.pieceGrayMinus}$colon',
                 rightType: PieceType.grayMinus,
                 horizontalGap: horizontalGap,
                 labelFontSize: labelFontSize,

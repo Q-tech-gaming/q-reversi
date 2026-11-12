@@ -3,6 +3,8 @@ import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/services/audio_volume_preference_service.dart';
 import '../../domain/services/operation_order_preference_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../gate_effect_icon_setting.dart';
 
 /// 設定ダイアログを表示し、閉じた時点の操作設定を返す。
 Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
@@ -12,6 +14,7 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
   final volumeService = AudioVolumePreferenceService();
   var allowFree = await service.isFreeSelectionOrderEnabled();
   var doubleTapApply = await service.isDoubleTapApplyEnabled();
+  var showGateIcons = await service.isGateEffectIconEnabled();
   var bgmVolume = await volumeService.bgmVolume();
   var sfxVolume = await volumeService.sfxVolume();
   if (!context.mounted) return null;
@@ -21,11 +24,12 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
     builder: (dialogContext) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
+          final l10n = AppLocalizations.of(context);
           return AlertDialog(
             backgroundColor: const Color(0xFF1A1F3A),
-            title: const Text(
-              '設定',
-              style: TextStyle(color: Colors.white),
+            title: Text(
+              l10n.settings,
+              style: const TextStyle(color: Colors.white),
             ),
             content: SingleChildScrollView(
               child: SizedBox(
@@ -35,13 +39,15 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'ゲートと駒を好きな順で選ぶ',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      title: Text(
+                        l10n.settingsFreeOrderTitle,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14),
                       ),
-                      subtitle: const Text(
-                        'オンにするとゲートと駒を順不同で選ぶことができます',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      subtitle: Text(
+                        l10n.settingsFreeOrderDescription,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
                       ),
                       value: allowFree,
                       activeColor: const Color(0xFF4CAF50),
@@ -55,13 +61,37 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'ダブルタップでゲートをすぐ適用',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      title: Text(
+                        l10n.settingsGateEffectIconTitle,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14),
                       ),
-                      subtitle: const Text(
-                        'ゲートを選んだあと、同じ駒をすばやく2回タップするとすぐ適用します。同じ行・列ボタンをもう一度押すと、選択を外さずにその範囲へ適用します',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      subtitle: Text(
+                        l10n.settingsGateEffectIconDescription,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
+                      ),
+                      value: showGateIcons,
+                      activeColor: const Color(0xFF4CAF50),
+                      onChanged: (value) async {
+                        SoundEffects.instance.click();
+                        await GateEffectIconSetting.instance.setEnabled(value);
+                        setDialogState(() {
+                          showGateIcons = value;
+                        });
+                      },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        l10n.settingsDoubleTapTitle,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        l10n.settingsDoubleTapDescription,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
                       ),
                       value: doubleTapApply,
                       activeColor: const Color(0xFF4CAF50),
@@ -74,11 +104,11 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                       },
                     ),
                     const SizedBox(height: 8),
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        '音量',
-                        style: TextStyle(
+                        l10n.settingsVolumeHeading,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -86,7 +116,7 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                       ),
                     ),
                     _VolumeSlider(
-                      label: 'BGM',
+                      label: l10n.settingsVolumeBgm,
                       value: bgmVolume,
                       onChanged: (value) {
                         setDialogState(() => bgmVolume = value);
@@ -97,7 +127,7 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                       },
                     ),
                     _VolumeSlider(
-                      label: '効果音',
+                      label: l10n.settingsVolumeSfx,
                       value: sfxVolume,
                       onChanged: (value) {
                         setDialogState(() => sfxVolume = value);
@@ -123,7 +153,7 @@ Future<OperationOrderSettings?> showOperationOrderSettingsDialog(
                     ),
                   );
                 },
-                child: const Text('閉じる'),
+                child: Text(l10n.close),
               ),
             ],
           );

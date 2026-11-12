@@ -14,12 +14,16 @@ import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/time_attack/time_attack_config.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
+import '../../l10n/app_localizations.dart';
 import '../gate_apply_sound.dart';
 import '../providers/game_provider.dart';
 import '../providers/time_attack_provider.dart';
 import '../input/cell_double_tap_apply.dart';
+import '../gate_effect_icon_setting.dart';
+import '../victory_condition_l10n.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/gate_button_grid.dart';
 import 'time_attack_result_screen.dart';
 
 /// 残り10秒の警告音と、残り5秒の警告音。
@@ -278,6 +282,11 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
   }
 
   Future<void> _showClearOverlay(TimeAttackClearFlash flash) async {
+    final l10n = AppLocalizations.of(context);
+    // registerClear 済みなので currentLevel は次盤面（ALL CLEAR 時は未使用）
+    final nextGoalText = flash.nextGoalLabel != null
+        ? _taProvider.state.currentLevel.victoryCondition.localizedName(l10n)
+        : null;
     final bonusSec = (flash.timeBonusMs / 1000).toStringAsFixed(1);
     final navigator = Navigator.of(context, rootNavigator: true);
     final dialogFuture = showGeneralDialog<void>(
@@ -302,10 +311,10 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                 children: [
                   Text(
                     flash.isAllClear
-                        ? 'ALL CLEAR!'
+                        ? l10n.timeAttackAllClear
                         : flash.isPerfect
-                            ? 'PERFECT!'
-                            : 'CLEAR!',
+                            ? l10n.timeAttackPerfect
+                            : l10n.timeAttackClear,
                     style: TextStyle(
                       color: flash.isPerfect || flash.isAllClear
                           ? const Color(0xFFFFD54F)
@@ -317,7 +326,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                   if (flash.isPerfect && flash.comboStreak > 0) ...[
                     const SizedBox(height: 8),
                     Text(
-                      '${flash.comboStreak} COMBO',
+                      l10n.timeAttackComboCount(flash.comboStreak),
                       style: const TextStyle(
                         color: Color(0xFFB794F4),
                         fontSize: 18,
@@ -326,14 +335,14 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                     ),
                     if (flash.comboBonusGained > 0)
                       Text(
-                        '+${flash.comboBonusGained} BONUS',
+                        l10n.timeAttackBonusGained(flash.comboBonusGained),
                         style: const TextStyle(color: Colors.white70),
                       ),
                   ],
                   if (!flash.isAllClear && flash.timeBonusMs > 0) ...[
                     const SizedBox(height: 12),
                     Text(
-                      'TIME +$bonusSec',
+                      l10n.timeAttackTimeBonus(bonusSec),
                       style: const TextStyle(
                         color: Color(0xFF81C784),
                         fontSize: 20,
@@ -361,9 +370,9 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                       ),
                       child: Column(
                         children: [
-                          const Text(
-                            'NEXT',
-                            style: TextStyle(
+                          Text(
+                            l10n.timeAttackNextLabel,
+                            style: const TextStyle(
                               color: Color(0xFFB794F4),
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -372,7 +381,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'ゴール: ${flash.nextGoalLabel}',
+                            l10n.goalLabel(nextGoalText ?? flash.nextGoalLabel!),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.white,
@@ -382,7 +391,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '最短ターン: ${flash.nextOptimalTurns}',
+                            l10n.optimalTurnsLabel(flash.nextOptimalTurns!),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -412,6 +421,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     final ta = _taProvider.state;
     if (!ta.canInteract || _handlingClear) return;
     if (!_canApplyGate()) return;
+    final l10n = AppLocalizations.of(context);
     playGateApplySound(
       _gameProvider.gameState,
       _selectedGate!,
@@ -422,7 +432,10 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
         await _gameProvider.applyGate(_selectedGate!, _selectedPositions);
     if (!success) {
       setState(() {
-        _errorMessage = _gameProvider.errorMessage ?? 'ゲートを適用できませんでした';
+        _errorMessage = _gameProvider.errorMessage ==
+                GameProvider.gateApplyForbiddenErrorCode
+            ? l10n.errorGateApplyFailedForbidden
+            : (_gameProvider.errorMessage ?? l10n.errorGateApplyFailed);
       });
       return;
     }
@@ -520,7 +533,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     }
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       _cellDoubleTap.reset();
-      setState(() => _errorMessage = '先にゲートを選択してください');
+      setState(() => _errorMessage =
+          AppLocalizations.of(context).hintSelectGateFirst);
       return;
     }
 
@@ -550,7 +564,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) {
       final piece = board.getPiece(row, col);
       if (piece != null && piece.isEntangled) {
-        setState(() => _errorMessage = 'エンタングル駒は選択できません');
+        setState(() => _errorMessage =
+            AppLocalizations.of(context).errorEntangledNotSelectable);
       } else {
         SoundEffects.instance.cellSelect();
         accepted = true;
@@ -562,7 +577,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
               _selectedPositions = [..._selectedPositions, position];
             } else {
               _selectedPositions = [position];
-              _errorMessage = '隣接した駒のみ選択できます';
+              _errorMessage = AppLocalizations.of(context).errorAdjacentOnly;
             }
           } else {
             _selectedPositions = [position];
@@ -585,7 +600,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
           }
         }
         if (hasEntangled) {
-          _errorMessage = 'エンタングル駒を含む範囲は選択できません';
+          _errorMessage =
+              AppLocalizations.of(context).errorRangeContainsEntangled;
           _selectedPositions = [];
         } else {
           SoundEffects.instance.cellSelect();
@@ -604,7 +620,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     _cellDoubleTap.reset();
     if (!_taProvider.state.canInteract) return;
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
-      setState(() => _errorMessage = '先にゲートを選択してください');
+      setState(() => _errorMessage =
+          AppLocalizations.of(context).hintSelectGateFirst);
       return;
     }
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
@@ -632,7 +649,8 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     _cellDoubleTap.reset();
     if (!_taProvider.state.canInteract) return;
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
-      setState(() => _errorMessage = '先にゲートを選択してください');
+      setState(() => _errorMessage =
+          AppLocalizations.of(context).hintSelectGateFirst);
       return;
     }
     if (_selectedGate != null && _selectedGate!.isTwoBitGate) return;
@@ -697,9 +715,9 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
         },
         child: Scaffold(
           appBar: AppBar(
-            title: const Text(
-              'タイムアタック',
-              style: TextStyle(color: Colors.white),
+            title: Text(
+              AppLocalizations.of(context).timeAttackTitle,
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: const Color(0xFF1A1F3A),
             foregroundColor: Colors.white,
@@ -738,7 +756,11 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                                       level.optimalTurns),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'ゴール: ${level.victoryCondition.displayName}',
+                                    AppLocalizations.of(context).goalLabel(
+                                      level.victoryCondition.localizedName(
+                                        AppLocalizations.of(context),
+                                      ),
+                                    ),
                                     style: const TextStyle(
                                       color: Colors.white70,
                                       fontSize: 16,
@@ -814,9 +836,9 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                                         vertical: 14,
                                       ),
                                     ),
-                                    child: const Text(
-                                      'ゲートを適用',
-                                      style: TextStyle(
+                                    child: Text(
+                                      AppLocalizations.of(context).applyGate,
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -834,9 +856,9 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
                                         vertical: 14,
                                       ),
                                     ),
-                                    child: const Text(
-                                      'リセット',
-                                      style: TextStyle(
+                                    child: Text(
+                                      AppLocalizations.of(context).reset,
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -891,6 +913,7 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
     int optimalTurns,
   ) {
     final timeColor = _timeColor(run.remainingMs);
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -902,23 +925,23 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
         children: [
           Expanded(
             child: _hudCell(
-              'TIME',
+              l10n.timeAttackHudTime,
               _formatTime(run.remainingMs),
               valueColor: timeColor,
             ),
           ),
           Expanded(
-            child: _hudCell('CLEAR', '${run.clearCount}'),
+            child: _hudCell(l10n.timeAttackHudClear, '${run.clearCount}'),
           ),
           Expanded(
-            child: _hudCell('最短ターン', '$optimalTurns'),
+            child: _hudCell(l10n.timeAttackHudBestTurns, '$optimalTurns'),
           ),
           Expanded(
-            child: _hudCell('ターン', '$turnCount'),
+            child: _hudCell(l10n.timeAttackHudTurns, '$turnCount'),
           ),
           Expanded(
             child: _hudCell(
-              'COMBO',
+              l10n.timeAttackHudCombo,
               '×${run.comboStreak}',
               valueColor:
                   run.comboStreak > 0 ? const Color(0xFFB794F4) : Colors.white,
@@ -958,66 +981,49 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
       if (availableGates.contains(GateType.cnot)) GateType.cnot,
       if (availableGates.contains(GateType.swap)) GateType.swap,
     ];
+    final playerColor =
+        _gameProvider.gameState.getCurrentPlayer()?.color ?? PlayerColor.black;
 
-    return Column(
-      children: [
-        if (oneBit.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: oneBit
-                .map(
-                  (gate) => Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                    child: SizedBox(
-                      width: 60,
-                      child: GateButton(
-                        gate: gate,
-                        isEnabled: true,
-                        isSelected: _selectedGate == gate,
-                        onTap: () => _selectGate(gate),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: GateEffectIconSetting.instance.notifier,
+      builder: (context, showIcons, _) {
+        final rows = showIcons
+            ? [
+                ...chunkGateRows(oneBit, 2),
+                ...chunkGateRows(twoBit, 2),
+              ]
+            : [
+                if (oneBit.isNotEmpty) oneBit,
+                if (twoBit.isNotEmpty) twoBit,
+              ];
+        return GateButtonGrid(
+          rows: rows,
+          showEffectIcon: showIcons,
+          itemBuilder: (gate) => GateButton(
+            gate: gate,
+            isEnabled: true,
+            isSelected: _selectedGate == gate,
+            showEffectIcon: showIcons,
+            playerColor: playerColor,
+            onTap: () => _selectGate(gate),
           ),
-        if (oneBit.isNotEmpty && twoBit.isNotEmpty) const SizedBox(height: 8),
-        if (twoBit.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: twoBit
-                .map(
-                  (gate) => Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                    child: SizedBox(
-                      width: 60,
-                      child: GateButton(
-                        gate: gate,
-                        isEnabled: true,
-                        isSelected: _selectedGate == gate,
-                        onTap: () => _selectGate(gate),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-      ],
+        );
+      },
     );
   }
 
   Future<void> _confirmExit(BuildContext context) async {
     SoundEffects.instance.reverse();
+    final l10n = AppLocalizations.of(context);
     final leave = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text('終了しますか？', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          '進行中のタイムアタックは破棄されます。',
-          style: TextStyle(color: Colors.white70),
+        title: Text(l10n.timeAttackQuitTitle,
+            style: const TextStyle(color: Colors.white)),
+        content: Text(
+          l10n.timeAttackQuitMessage,
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -1025,14 +1031,14 @@ class _TimeAttackGameScreenState extends State<TimeAttackGameScreen>
               SoundEffects.instance.click();
               Navigator.pop(ctx, false);
             },
-            child: const Text('キャンセル'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
               SoundEffects.instance.click();
               Navigator.pop(ctx, true);
             },
-            child: const Text('終了'),
+            child: Text(l10n.exit),
           ),
         ],
       ),

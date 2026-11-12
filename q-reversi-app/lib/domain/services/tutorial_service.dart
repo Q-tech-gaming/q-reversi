@@ -1,40 +1,56 @@
+import 'dart:ui' show Locale;
+
+import '../../l10n/content/tutorial_locale.dart';
 import '../entities/tutorial_content.dart';
 import '../entities/gate_type.dart';
 import '../entities/challenge_level.dart';
 
 /// チュートリアルサービス
+///
+/// 文言は [Locale]（ja / en）に応じて切り替える。ページ/スライドID・
+/// 視覚要素・ページ構成はロケールに依存しない。
 class TutorialService {
   /// レベル1のチュートリアルコンテンツを取得
-  static List<TutorialContent> getLevel1Tutorial() {
+  static List<TutorialContent> getLevel1Tutorial(Locale locale) {
+    final t = tutorialTr(locale);
     return [
       // ① チャレンジモードの概念説明
-      const TutorialContent(
+      TutorialContent(
         id: 'level1_concept',
-        title: '量子の世界へようこそ',
-        description: 'このゲームでは、コンピュータの量子を利用し、その量子でするリバーシゲームです。量子動作の特徴を活用し、原理を理解して量子世界を楽しもう',
+        title: t('量子の世界へようこそ', 'Welcome to the Quantum World'),
+        description: t(
+          'このゲームでは、コンピュータの量子を利用し、その量子でするリバーシゲームです。量子動作の特徴を活用し、原理を理解して量子世界を楽しもう',
+          'This is Reversi powered by the quirks of quantum computing. Learn how quantum operations work and enjoy the quantum world!',
+        ),
         type: TutorialType.concept,
       ),
-      
+
       // ② Xゲートの説明
-      const TutorialContent(
+      TutorialContent(
         id: 'level1_xgate',
-        title: 'Xゲート',
-        description: 'Xゲートは白と黒の駒を入れ替えます',
+        title: t('Xゲート', 'X gate'),
+        description: t(
+          'Xゲートは白と黒の駒を入れ替えます',
+          'The X gate swaps white and black pieces',
+        ),
         type: TutorialType.gateExplain,
         gate: GateType.x,
         bulletPoints: [
-          '白 → 黒',
-          '黒 → 白',
+          t('白 → 黒', 'White → Black'),
+          t('黒 → 白', 'Black → White'),
         ],
       ),
-      
+
       // ③ 操作説明（アニメーション付き）
-      const TutorialContent(
+      TutorialContent(
         id: 'level1_operation',
-        title: '操作方法',
-        description: 'ゲートを選択して、盤面を選択し、適用ボタンを押します',
+        title: t('操作方法', 'How to play'),
+        description: t(
+          'ゲートを選択して、盤面を選択し、適用ボタンを押します',
+          'Pick a gate, select the target on the board, then tap the Apply button',
+        ),
         type: TutorialType.operation,
-        animation: TutorialAnimation(
+        animation: const TutorialAnimation(
           type: AnimationType.operationDemo,
           duration: Duration(seconds: 5),
         ),
@@ -47,32 +63,39 @@ class TutorialService {
     int level,
     ChallengeLevel currentLevel,
     List<ChallengeLevel> allLevels,
+    Locale locale,
   ) {
+    final t = tutorialTr(locale);
     // 前のレベルで使用可能だったゲートを取得
     final previousGates = _getGatesUpToLevel(level - 1, allLevels);
     final currentGates = currentLevel.availableGates;
-    
+
     // 新しいゲートを検出
-    final newGates = currentGates.where((gate) => !previousGates.contains(gate)).toList();
-    
+    final newGates =
+        currentGates.where((gate) => !previousGates.contains(gate)).toList();
+
     if (newGates.isEmpty) return null;
-    
+
     // 最初の新しいゲートについて説明
     final newGate = newGates.first;
     return [
       TutorialContent(
         id: 'new_gate_${newGate.name}',
-        title: '新しいゲート: ${_getGateName(newGate)}',
-        description: _getGateDescription(newGate),
+        title: t(
+          '新しいゲート: ${_getGateName(newGate, locale)}',
+          'New gate: ${_getGateName(newGate, locale)}',
+        ),
+        description: _getGateDescription(newGate, locale),
         type: TutorialType.gateExplain,
         gate: newGate,
-        bulletPoints: _getGateBulletPoints(newGate),
+        bulletPoints: _getGateBulletPoints(newGate, locale),
       ),
     ];
   }
 
   /// レベルまでのゲートを取得
-  static List<GateType> _getGatesUpToLevel(int level, List<ChallengeLevel> allLevels) {
+  static List<GateType> _getGatesUpToLevel(
+      int level, List<ChallengeLevel> allLevels) {
     final gates = <GateType>{};
     for (final l in allLevels) {
       if (l.level <= level) {
@@ -83,62 +106,110 @@ class TutorialService {
   }
 
   /// ゲート名を取得
-  static String _getGateName(GateType gate) {
+  static String _getGateName(GateType gate, Locale locale) {
+    final t = tutorialTr(locale);
     switch (gate) {
       case GateType.x:
-        return 'Xゲート';
+        return t('Xゲート', 'X gate');
       case GateType.h:
-        return 'Hゲート';
+        return t('Hゲート', 'H gate');
       case GateType.y:
-        return 'Yゲート';
+        return t('Yゲート', 'Y gate');
       case GateType.z:
-        return 'Zゲート';
+        return t('Zゲート', 'Z gate');
       case GateType.cnot:
-        return 'CNOTゲート';
+        return t('CNOTゲート', 'CNOT gate');
       case GateType.swap:
-        return 'SWAPゲート';
+        return t('SWAPゲート', 'SWAP gate');
     }
   }
 
   /// ゲートの説明を取得
-  static String _getGateDescription(GateType gate) {
+  static String _getGateDescription(GateType gate, Locale locale) {
+    final t = tutorialTr(locale);
     switch (gate) {
       case GateType.x:
-        return 'Xゲートは白と黒の駒を入れ替えます';
+        return t(
+          'Xゲートは白と黒の駒を入れ替えます',
+          'The X gate swaps white and black pieces',
+        );
       case GateType.h:
-        return 'Hゲートは重ね合わせ状態を作り出します';
+        return t(
+          'Hゲートは重ね合わせ状態を作り出します',
+          'The H gate creates a superposition',
+        );
       case GateType.y:
-        return 'Yゲートは複数の変化を同時に行います';
+        return t(
+          'Yゲートは複数の変化を同時に行います',
+          'The Y gate makes several changes at once',
+        );
       case GateType.z:
-        return 'Zゲートは位相を反転させます';
+        return t(
+          'Zゲートは位相を反転させます',
+          'The Z gate flips the phase',
+        );
       case GateType.cnot:
-        return 'CNOTゲートは制御ビットに応じてターゲットビットを反転させます';
+        return t(
+          'CNOTゲートは制御ビットに応じてターゲットビットを反転させます',
+          'The CNOT gate flips the target bit based on the control bit',
+        );
       case GateType.swap:
-        return 'SWAPゲートは2つの駒の状態を入れ替えます';
+        return t(
+          'SWAPゲートは2つの駒の状態を入れ替えます',
+          'The SWAP gate swaps the states of two pieces',
+        );
     }
   }
 
   /// ゲートの箇条書きを取得
-  static List<String> _getGateBulletPoints(GateType gate) {
+  static List<String> _getGateBulletPoints(GateType gate, Locale locale) {
+    final t = tutorialTr(locale);
+    final white = t('白', 'White');
+    final black = t('黒', 'Black');
+    final grayPlus = t('グレープラス', 'Gray plus');
+    final grayMinus = t('グレーマイナス', 'Gray minus');
     switch (gate) {
       case GateType.x:
-        return ['白 → 黒', '黒 → 白'];
+        return ['$white → $black', '$black → $white'];
       case GateType.h:
-        return ['白 → グレープラス', '黒 → グレーマイナス', 'グレープラス → 白', 'グレーマイナス → 黒'];
+        return [
+          '$white → $grayPlus',
+          '$black → $grayMinus',
+          '$grayPlus → $white',
+          '$grayMinus → $black',
+        ];
       case GateType.y:
-        return ['白 → グレーマイナス', '黒 → グレープラス', 'グレープラス → グレーマイナス', 'グレーマイナス → グレープラス'];
+        return [
+          '$white → $grayMinus',
+          '$black → $grayPlus',
+          '$grayPlus → $grayMinus',
+          '$grayMinus → $grayPlus',
+        ];
       case GateType.z:
-        return ['グレープラス → グレーマイナス', 'グレーマイナス → グレープラス', '白・黒は変化なし'];
+        return [
+          '$grayPlus → $grayMinus',
+          '$grayMinus → $grayPlus',
+          t('白・黒は変化なし', 'White and black are unchanged'),
+        ];
       case GateType.cnot:
-        return ['制御ビットが黒の場合、ターゲットビットを反転', '制御ビットが白の場合は変化なし'];
+        return [
+          t('制御ビットが黒の場合、ターゲットビットを反転',
+              'If the control bit is black, the target bit flips'),
+          t('制御ビットが白の場合は変化なし',
+              'If the control bit is white, nothing changes'),
+        ];
       case GateType.swap:
-        return ['2つの駒の状態を完全に入れ替え'];
+        return [
+          t('2つの駒の状態を完全に入れ替え',
+              'Fully swaps the states of the two pieces'),
+        ];
     }
   }
 
   /// 全画面チュートリアルの全ページを取得（スライド制を廃止し、すべてのスライドを独立したページとして返す）
-  static List<TutorialPage> getFullTutorial() {
-    final originalPages = _getOriginalTutorialPages();
+  static List<TutorialPage> getFullTutorial(Locale locale) {
+    final t = tutorialTr(locale);
+    final originalPages = _getOriginalTutorialPages(locale);
 
     // 指定されたページのみを残す
     const selectedSlideIds = [
@@ -154,18 +225,18 @@ class TutorialService {
       'gate_cnot_1-1', // CNOTゲート
       'gate_mastery_complete-1', // ゲート習得完了
     ];
-    const selectedTitles = [
-      'はじめに',
-      'ゲーム概要',
-      '駒の種類',
-      'ゲートについて',
-      'Xゲート',
-      'Hゲート',
-      'Zゲート',
-      'Yゲート',
-      'SWAPゲート',
-      'CNOTゲート',
-      'ゲート説明完了',
+    final selectedTitles = [
+      t('はじめに', 'Introduction'),
+      t('ゲーム概要', 'Game overview'),
+      t('駒の種類', 'Piece types'),
+      t('ゲートについて', 'About gates'),
+      t('Xゲート', 'X gate'),
+      t('Hゲート', 'H gate'),
+      t('Zゲート', 'Z gate'),
+      t('Yゲート', 'Y gate'),
+      t('SWAPゲート', 'SWAP gate'),
+      t('CNOTゲート', 'CNOT gate'),
+      t('ゲート説明完了', 'Gates explained'),
     ];
 
     final slideById = <String, TutorialSlide>{};
@@ -180,7 +251,7 @@ class TutorialService {
       final slideId = selectedSlideIds[i];
       final slide = slideById[slideId];
       if (slide == null) {
-        throw StateError('指定スライドが見つかりません: $slideId');
+        throw StateError('Slide not found: $slideId');
       }
       selectedPages.add(
         TutorialPage(
@@ -196,21 +267,25 @@ class TutorialService {
   }
 
   /// 元のチュートリアルページリスト（スライド分割あり）
-  static List<TutorialPage> _getOriginalTutorialPages() {
+  static List<TutorialPage> _getOriginalTutorialPages(Locale locale) {
+    final t = tutorialTr(locale);
     return [
       // ページ0: Welcome
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 0,
         pageId: 'welcome',
-        pageTitle: 'Welcomeページ',
+        pageTitle: t('Welcomeページ', 'Welcome'),
         slides: [
           TutorialSlide(
             slideId: 'welcome-1',
             texts: [
-              '量子の世界へようこそ。',
-              'このゲームは、量子コンピュータの動作原理を活用したリバーシ風ゲームです。',
+              t('量子の世界へようこそ。', 'Welcome to the quantum world.'),
+              t(
+                'このゲームは、量子コンピュータの動作原理を活用したリバーシ風ゲームです。',
+                'This is a Reversi-style game powered by how quantum computers actually work.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/QC_and_Othello.jpg'},
             ),
@@ -219,17 +294,20 @@ class TutorialService {
       ),
 
       // ページ1: 基本操作
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 1,
         pageId: 'operation',
-        pageTitle: '基本操作',
+        pageTitle: t('基本操作', 'Basic controls'),
         slides: [
           TutorialSlide(
             slideId: 'operation-1',
             texts: [
-              '8x8の盤面のそれぞれのマスにある駒を量子コンピュータの最小単位(量子ビット)として、その盤面の縦横1列、もしくは正方4マスに対して量子コンピュータの演算(量子ゲート)をかけていくゲームです。',
+              t(
+                '8x8の盤面のそれぞれのマスにある駒を量子コンピュータの最小単位(量子ビット)として、その盤面の縦横1列、もしくは正方4マスに対して量子コンピュータの演算(量子ゲート)をかけていくゲームです。',
+                'Every piece on the 8x8 board is a qubit, the smallest unit of a quantum computer. You play by applying quantum gates, the operations of a quantum computer, to a single row, a single column, or a 2x2 block of four cells.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.animation,
               data: {'type': 'operation_demo'},
             ),
@@ -238,17 +316,20 @@ class TutorialService {
       ),
 
       // ページ1.5: 量子コンピュータとは？
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 1,
         pageId: 'quantum_computer_intro',
-        pageTitle: '量子コンピュータとは？',
+        pageTitle: t('量子コンピュータとは？', 'What is a quantum computer?'),
         slides: [
           TutorialSlide(
             slideId: 'quantum_computer_intro-1',
             texts: [
-              '「原子よりも小さな粒子の世界の不思議なルール」="量子力学"の性質を活用することで、従来のコンピュータでは解けない複雑な問題を高速に計算できるコンピュータです。',
+              t(
+                '「原子よりも小さな粒子の世界の不思議なルール」="量子力学"の性質を活用することで、従来のコンピュータでは解けない複雑な問題を高速に計算できるコンピュータです。',
+                'Quantum computers tap into "quantum mechanics," the strange rules of a world smaller than atoms, to quickly solve complex problems that conventional computers can\'t.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/Quantum.jpg'},
             ),
@@ -257,27 +338,39 @@ class TutorialService {
       ),
 
       // ページ2: 量子コンピュータの最小単位(qビット)
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 2,
         pageId: 'qbit',
-        pageTitle: '量子コンピュータの最小単位(qビット)',
+        pageTitle: t(
+          '量子コンピュータの最小単位(qビット)',
+          'The building block of a quantum computer (qubit)',
+        ),
         slides: [
           TutorialSlide(
             slideId: 'qbit-1',
             texts: [
-              '従来のコンピュータでは、その最小単位(ビット)は0か1のどちらかの値を取ります。',
-              '量子コンピュータの最小単位(量子ビット)では、1ビットが0か1だけではなく、その中間の状態(重ね合わせの状態)が存在し、0か1が確定していない中間の状態を取ることができます。',
+              t(
+                '従来のコンピュータでは、その最小単位(ビット)は0か1のどちらかの値を取ります。',
+                'In a conventional computer, the smallest unit, a bit, is either 0 or 1.',
+              ),
+              t(
+                '量子コンピュータの最小単位(量子ビット)では、1ビットが0か1だけではなく、その中間の状態(重ね合わせの状態)が存在し、0か1が確定していない中間の状態を取ることができます。',
+                'A quantum computer\'s smallest unit, a qubit, can be 0, 1, or something in between (a superposition), where it hasn\'t settled on 0 or 1 yet.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.comparison,
             ),
           ),
           TutorialSlide(
             slideId: 'qbit-2',
             texts: [
-              'このゲームでは、0を白駒、1を黒駒、そして重ね合わせの状態をグレー駒として、量子コンピュータの中身を模擬します。',
+              t(
+                'このゲームでは、0を白駒、1を黒駒、そして重ね合わせの状態をグレー駒として、量子コンピュータの中身を模擬します。',
+                'In this game, a white piece stands for 0, a black piece for 1, and a gray piece for a superposition. That\'s how we mimic what goes on inside a quantum computer.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.board,
               data: {'mode': 'mini_board_with_image'},
             ),
@@ -286,18 +379,24 @@ class TutorialService {
       ),
 
       // ページ3: 重ね合わせについて
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 3,
         pageId: 'superposition',
-        pageTitle: '重ね合わせについて',
+        pageTitle: t('重ね合わせについて', 'About superposition'),
         slides: [
           TutorialSlide(
             slideId: 'superposition-1',
             texts: [
-              'さて、このグレー駒の状態とは、どういう状態でしょうか？',
-              '例えば、コイントスをして空中で回っている最中のような、白(0)か黒(1)にまだ確定しておらず、どちらになる可能性もあるような状態のことを指しています。',
+              t(
+                'さて、このグレー駒の状態とは、どういう状態でしょうか？',
+                'So, what state is a gray piece in?',
+              ),
+              t(
+                '例えば、コイントスをして空中で回っている最中のような、白(0)か黒(1)にまだ確定しておらず、どちらになる可能性もあるような状態のことを指しています。',
+                'Think of a coin spinning in the air after a toss: it hasn\'t landed on white (0) or black (1) yet, and it could end up either way.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.diagram,
               data: {'type': 'gray_piece_equals_video'},
             ),
@@ -305,10 +404,16 @@ class TutorialService {
           TutorialSlide(
             slideId: 'superposition-2',
             texts: [
-              'グレー駒がどちらの色に転んだかは、量子コンピュータの操作、"測定"をすることで、白(0)か黒(1)に確定し、計算結果を得ることができます。',
-              'このゲームでは、グレー駒は測定すると50%の確率で白(0)か黒(1)に確定するものとします。',
+              t(
+                'グレー駒がどちらの色に転んだかは、量子コンピュータの操作、"測定"をすることで、白(0)か黒(1)に確定し、計算結果を得ることができます。',
+                'A gray piece settles on a color when you perform an operation called "measurement." Measuring turns it into white (0) or black (1) and gives you the result of the computation.',
+              ),
+              t(
+                'このゲームでは、グレー駒は測定すると50%の確率で白(0)か黒(1)に確定するものとします。',
+                'In this game, a measured gray piece has a 50/50 chance of becoming white (0) or black (1).',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.diagram,
               data: {'type': 'measurement'},
             ),
@@ -317,17 +422,20 @@ class TutorialService {
       ),
 
       // ページ4: 駒の種類 / ゲートについて
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 4,
         pageId: 'piece_and_gate_intro',
-        pageTitle: '駒の種類 / ゲートについて',
+        pageTitle: t('駒の種類 / ゲートについて', 'Piece types / About gates'),
         slides: [
           TutorialSlide(
             slideId: 'piece_types-1',
             texts: [
-              'このゲームでは、普通のリバーシと同じ白と黒だけでなく、その中間の状態を表すグレープラス、グレーマイナスという駒があります。グレーの駒は、対戦終了時に50%の確率で白か黒になります。',
+              t(
+                'このゲームでは、普通のリバーシと同じ白と黒だけでなく、その中間の状態を表すグレープラス、グレーマイナスという駒があります。グレーの駒は、対戦終了時に50%の確率で白か黒になります。',
+                'Along with the white and black pieces from regular Reversi, this game has gray plus and gray minus pieces for in-between states. When the match ends, each gray piece becomes white or black on a 50/50 chance.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.diagram,
               data: {'type': 'piece_kinds'},
             ),
@@ -335,9 +443,12 @@ class TutorialService {
           TutorialSlide(
             slideId: 'gate_about-1',
             texts: [
-              'このゲームでは、駒を挟んでひっくり返す代わりに、量子コンピュータの演算である"ゲート"を駒に適用して別の種類の駒に変化させます。以下の6つのゲートを用います。',
+              t(
+                'このゲームでは、駒を挟んでひっくり返す代わりに、量子コンピュータの演算である"ゲート"を駒に適用して別の種類の駒に変化させます。以下の6つのゲートを用います。',
+                'Instead of flanking and flipping pieces, you apply "gates," the operations of a quantum computer, to turn pieces into other kinds of pieces. Here are the six gates you\'ll use.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/GateKinds.png'},
             ),
@@ -346,18 +457,21 @@ class TutorialService {
       ),
 
       // ページ5: Xゲート
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 5,
         pageId: 'gate_x',
-        pageTitle: 'Xゲート',
+        pageTitle: t('Xゲート', 'X gate'),
         slides: [
           TutorialSlide(
             slideId: 'gate_x-1',
             texts: [
-              '1つのビットに作用し、白と黒を入れ替えます。',
-              'グレー駒は変化させません。',
+              t(
+                '1つのビットに作用し、白と黒を入れ替えます。',
+                'Acts on one piece and swaps white and black.',
+              ),
+              t('グレー駒は変化させません。', 'Gray pieces stay as they are.'),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateX.png'},
             ),
@@ -366,17 +480,20 @@ class TutorialService {
       ),
 
       // ページ6: Hゲート
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 6,
         pageId: 'gate_h',
-        pageTitle: 'Hゲート',
+        pageTitle: t('Hゲート', 'H gate'),
         slides: [
           TutorialSlide(
             slideId: 'gate_h-1',
             texts: [
-              '1つのビットに作用し、白とグレープラス、黒とグレーマイナスを入れ替えます。',
+              t(
+                '1つのビットに作用し、白とグレープラス、黒とグレーマイナスを入れ替えます。',
+                'Acts on one piece and swaps white with gray plus, and black with gray minus.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateH.png'},
             ),
@@ -385,18 +502,21 @@ class TutorialService {
       ),
 
       // ページ7: Zゲート
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 7,
         pageId: 'gate_z',
-        pageTitle: 'Zゲート',
+        pageTitle: t('Zゲート', 'Z gate'),
         slides: [
           TutorialSlide(
             slideId: 'gate_z-1',
             texts: [
-              '1つのビットに作用し、グレープラスとグレーマイナスを入れ替えます。',
-              '白と黒は変化させません。',
+              t(
+                '1つのビットに作用し、グレープラスとグレーマイナスを入れ替えます。',
+                'Acts on one piece and swaps gray plus and gray minus.',
+              ),
+              t('白と黒は変化させません。', 'White and black stay as they are.'),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateZ.png'},
             ),
@@ -405,17 +525,20 @@ class TutorialService {
       ),
 
       // ページ8: Yゲート
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 8,
         pageId: 'gate_y',
-        pageTitle: 'Yゲート',
+        pageTitle: t('Yゲート', 'Y gate'),
         slides: [
           TutorialSlide(
             slideId: 'gate_y-1',
             texts: [
-              '1つのビットに作用し、白と黒、グレープラスとグレーマイナスを入れ替えます。',
+              t(
+                '1つのビットに作用し、白と黒、グレープラスとグレーマイナスを入れ替えます。',
+                'Acts on one piece and swaps white with black, and gray plus with gray minus.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateY.png'},
             ),
@@ -424,17 +547,20 @@ class TutorialService {
       ),
 
       // ページ9: SWAPゲート
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 9,
         pageId: 'gate_swap',
-        pageTitle: 'SWAPゲート',
+        pageTitle: t('SWAPゲート', 'SWAP gate'),
         slides: [
           TutorialSlide(
             slideId: 'gate_swap-1',
             texts: [
-              '2つの隣接する駒に作用し、その駒を入れ替えます。',
+              t(
+                '2つの隣接する駒に作用し、その駒を入れ替えます。',
+                'Acts on two adjacent pieces and swaps them.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateSWAP.png'},
             ),
@@ -443,17 +569,20 @@ class TutorialService {
       ),
 
       // ページ10: CNOTゲート#1 - 基本動作
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 10,
         pageId: 'gate_cnot_1',
-        pageTitle: 'CNOTゲート#1 - 基本動作',
+        pageTitle: t('CNOTゲート#1 - 基本動作', 'CNOT gate #1 - Basic behavior'),
         slides: [
           TutorialSlide(
             slideId: 'gate_cnot_1-1',
             texts: [
-              '2つの隣接する駒に作用し、1駒目が黒の時のみ、2駒目にXゲートが作用(白と黒を入れ替え)します。',
+              t(
+                '2つの隣接する駒に作用し、1駒目が黒の時のみ、2駒目にXゲートが作用(白と黒を入れ替え)します。',
+                'Acts on two adjacent pieces. Only when the first piece is black is the X gate applied to the second piece (swapping white and black).',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/gateCNOT.png'},
             ),
@@ -462,19 +591,28 @@ class TutorialService {
       ),
 
       // ページ10.5: ゲート習得完了
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 10,
         pageId: 'gate_mastery_complete',
-        pageTitle: 'チュートリアル完了',
+        pageTitle: t('チュートリアル完了', 'Tutorial complete'),
         slides: [
           TutorialSlide(
             slideId: 'gate_mastery_complete-1',
             texts: [
-              '基本操作の説明はこれで完了です。',
-              '続きはチャレンジモードの「ステージ0」で、実際に手を動かしながら練習できます。',
-              '下の「チャレンジへ」から、チュートリアルの続きを始めましょう。',
+              t(
+                '基本操作の説明はこれで完了です。',
+                'That covers the basic controls!',
+              ),
+              t(
+                '続きはチャレンジモードの「ステージ0」で、実際に手を動かしながら練習できます。',
+                'Keep practicing hands-on in "Stage 0" of Challenge Mode.',
+              ),
+              t(
+                '下の「チャレンジへ」から、チュートリアルの続きを始めましょう。',
+                'Tap "Go to Challenge" below to continue the tutorial.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/AllGate.png'},
             ),
@@ -483,18 +621,25 @@ class TutorialService {
       ),
 
       // ページ11: CNOTゲート#2 - エンタングルメント
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 11,
         pageId: 'gate_cnot_2',
-        pageTitle: 'CNOTゲート#2 - エンタングルメント',
+        pageTitle:
+            t('CNOTゲート#2 - エンタングルメント', 'CNOT gate #2 - Entanglement'),
         slides: [
           TutorialSlide(
             slideId: 'gate_cnot_2-1',
             texts: [
-              'さて、ここでCNOTゲートについて少し深く考えてみます。1駒目が黒や白ではなく、グレーだった場合はどうなるでしょう？',
-              'グレーの場合、50%で白、50%で黒なので、2駒目が反転するかどうかも確率的になります。',
+              t(
+                'さて、ここでCNOTゲートについて少し深く考えてみます。1駒目が黒や白ではなく、グレーだった場合はどうなるでしょう？',
+                'Let\'s take a closer look at the CNOT gate. What happens if the first piece is gray instead of black or white?',
+              ),
+              t(
+                'グレーの場合、50%で白、50%で黒なので、2駒目が反転するかどうかも確率的になります。',
+                'A gray piece is 50% white and 50% black, so whether the second piece flips is a matter of chance, too.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/CNOTgray.png'},
             ),
@@ -502,10 +647,16 @@ class TutorialService {
           TutorialSlide(
             slideId: 'gate_cnot_2-2',
             texts: [
-              '例えば、1駒目が白だった時、2駒目は反転せず白のままです。1駒目が黒だった時、2駒目は反転しており、黒になります。',
-              'このように、測定するまではどちらかわからないが、1駒目を測定して白なら、2駒目も必ず白。1駒目を測定して黒なら2駒目も必ず黒。というように運命を共にした状態になるのです。',
+              t(
+                '例えば、1駒目が白だった時、2駒目は反転せず白のままです。1駒目が黒だった時、2駒目は反転しており、黒になります。',
+                'For example, if the first piece is white, the second piece doesn\'t flip and stays white. If the first piece is black, the second piece flips and becomes black.',
+              ),
+              t(
+                'このように、測定するまではどちらかわからないが、1駒目を測定して白なら、2駒目も必ず白。1駒目を測定して黒なら2駒目も必ず黒。というように運命を共にした状態になるのです。',
+                'You can\'t tell which outcome you\'ll get until you measure. But if the first piece measures white, the second is always white, and if the first measures black, the second is always black. The two pieces are bound to the same fate.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/CNOT3.png'},
             ),
@@ -513,9 +664,12 @@ class TutorialService {
           TutorialSlide(
             slideId: 'gate_cnot_2-3',
             texts: [
-              'このような状態を"エンタングルメント"と呼び、このゲームでは以下の通りに表現することとします。',
+              t(
+                'このような状態を"エンタングルメント"と呼び、このゲームでは以下の通りに表現することとします。',
+                'This kind of state is called "entanglement," and here\'s how the game shows it.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/entanglement.png'},
             ),
@@ -524,17 +678,23 @@ class TutorialService {
       ),
 
       // ページ12: CNOTゲート#3 - 全パターン一覧
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 12,
         pageId: 'gate_cnot_3',
-        pageTitle: 'CNOTゲート#3 - 全パターン一覧',
+        pageTitle: t(
+          'CNOTゲート#3 - 全パターン一覧',
+          'CNOT gate #3 - All patterns',
+        ),
         slides: [
           TutorialSlide(
             slideId: 'gate_cnot_3-1',
             texts: [
-              '最後に、CNOTゲートの2駒の組み合わせ全パターンです。',
+              t(
+                '最後に、CNOTゲートの2駒の組み合わせ全パターンです。',
+                'Last up: every possible combination of two pieces for the CNOT gate.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/blackCNOT_all.png'},
             ),
@@ -542,9 +702,12 @@ class TutorialService {
           TutorialSlide(
             slideId: 'gate_cnot_3-2',
             texts: [
-              'VSモードにおける黒プレイヤーの場合は、1駒目の条件が反転することとします。',
+              t(
+                'VSモードにおける黒プレイヤーの場合は、1駒目の条件が反転することとします。',
+                'In VS mode, the condition on the first piece is reversed for the black player.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.image,
               data: {'path': 'assets/whiteCNOT_all.png'},
             ),
@@ -553,18 +716,24 @@ class TutorialService {
       ),
 
       // ページ13: 終わりに
-      const TutorialPage(
+      TutorialPage(
         pageNumber: 13,
         pageId: 'finish',
-        pageTitle: '終わりに',
+        pageTitle: t('終わりに', 'Epilogue'),
         slides: [
           TutorialSlide(
             slideId: 'finish-1',
             texts: [
-              '量子コンピュータでは、重ね合わせとエンタングルメントをうまく回路の中で使うことで、高速な計算が可能になるのです。',
-              'まずはチャレンジモードのステージ0（チュートリアルの続き）で操作を固め、クリア後は本編ステージへ進んでみてください。',
+              t(
+                '量子コンピュータでは、重ね合わせとエンタングルメントをうまく回路の中で使うことで、高速な計算が可能になるのです。',
+                'By making clever use of superposition and entanglement in its circuits, a quantum computer can solve certain problems much faster.',
+              ),
+              t(
+                'まずはチャレンジモードのステージ0（チュートリアルの続き）で操作を固め、クリア後は本編ステージへ進んでみてください。',
+                'Start by getting comfortable with the controls in Challenge Mode Stage 0 (the rest of the tutorial), then head into the main stages once you clear it.',
+              ),
             ],
-            visualElement: TutorialVisualElement(
+            visualElement: const TutorialVisualElement(
               type: VisualElementType.board,
             ),
           ),
@@ -573,4 +742,3 @@ class TutorialService {
     ];
   }
 }
-

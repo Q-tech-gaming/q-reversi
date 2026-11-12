@@ -5,6 +5,7 @@ import '../../domain/entities/challenge_level.dart';
 import '../../domain/entities/game_state.dart';
 import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/position.dart';
+import '../../domain/entities/game_mode.dart';
 import '../../domain/entities/player.dart';
 import '../../domain/entities/challenge_progress.dart';
 import '../../domain/entities/board.dart';
@@ -13,12 +14,16 @@ import '../../domain/services/challenge_level_loader.dart';
 import '../../domain/services/operation_order_preference_service.dart';
 import '../../core/background_music.dart';
 import '../../core/sound_effects.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/challenge_progress_notifier.dart';
 import '../gate_apply_sound.dart';
 import '../providers/game_provider.dart';
 import '../input/cell_double_tap_apply.dart';
 import '../widgets/board_widget.dart';
+import '../gate_effect_icon_setting.dart';
+import '../victory_condition_l10n.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/gate_button_grid.dart';
 import '../widgets/operation_order_settings_dialog.dart';
 import 'challenge_flow_scope.dart';
 import 'challenge_level_page_route.dart';
@@ -176,26 +181,27 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   }
 
   void _startGuideOverlay() {
+    final l10n = AppLocalizations.of(context);
     _guideSteps = [
       _GuideStep(
         key: _goalConditionKey,
-        message: '1. クリア条件を確認してください。\n盤面をすべて白にするか、黒にしたらレベルクリアです',
+        message: l10n.challengeGuideStep1,
       ),
       _GuideStep(
         key: _xGateButtonKey,
-        message: '2. ゲートを選択してください',
+        message: l10n.challengeGuideStep2,
       ),
       _GuideStep(
         key: _boardAreaKey,
-        message: '3. 適用する駒を選択してください。\n盤面の中をタップか、盤面の外のボタンをタップしてください',
+        message: l10n.challengeGuideStep3,
       ),
       _GuideStep(
         key: _applyGateButtonKey,
-        message: '4. "ゲートを適用"ボタンでゲートを駒に適用させて下さい',
+        message: l10n.challengeGuideStep4,
       ),
       _GuideStep(
         key: _gateInfoButtonKey,
-        message: '5. いつでもこのinfoボタンから、ゲートの効果を確認できます',
+        message: l10n.challengeGuideStep5,
       ),
     ];
     _guideStepIndex = 0;
@@ -332,8 +338,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                                 ),
                                 child: Text(
                                   _guideStepIndex == _guideSteps.length - 1
-                                      ? '完了'
-                                      : '次へ',
+                                      ? AppLocalizations.of(context).done
+                                      : AppLocalizations.of(context).next,
                                   style: const TextStyle(
                                     color: Colors.lightBlueAccent,
                                     fontWeight: FontWeight.bold,
@@ -395,14 +401,14 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              'レベル ${widget.level.displayLabel}',
+              AppLocalizations.of(context).levelTitle(widget.level.displayLabel),
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: const Color(0xFF1A1F3A),
             foregroundColor: Colors.white,
             actions: [
               IconButton(
-                tooltip: '設定',
+                tooltip: AppLocalizations.of(context).settings,
                 icon: const Icon(Icons.settings_outlined),
                 onPressed: _openOperationOrderSettings,
               ),
@@ -637,7 +643,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'レベル ${level.displayLabel}',
+                AppLocalizations.of(context).levelTitle(level.displayLabel),
                 style: TextStyle(
                   color: isUnlocked ? Colors.white : Colors.white54,
                   fontWeight: FontWeight.bold,
@@ -676,13 +682,17 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                 Container(
                   key: _goalConditionKey,
                   child: Text(
-                    'ゴール: ${widget.level.victoryCondition.displayName}',
+                    AppLocalizations.of(context).goalLabel(
+                      widget.level.victoryCondition
+                          .localizedName(AppLocalizations.of(context)),
+                    ),
                     style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '最短ターン: ${widget.level.optimalTurns}',
+                  AppLocalizations.of(context)
+                      .optimalTurnsLabel(widget.level.optimalTurns),
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
@@ -690,7 +700,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           ),
           // ターンカウントを右上に表示
           Text(
-            'ターン: ${state.turnCount}',
+            AppLocalizations.of(context).turnsCount(state.turnCount),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -716,9 +726,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                '使用可能ゲート',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context).challengeAvailableGates,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -732,7 +742,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                 },
                 key: _gateInfoButtonKey,
                 icon: const Icon(Icons.info_outline, color: Colors.white),
-                tooltip: 'ゲート効果を見る',
+                tooltip: AppLocalizations.of(context).gateEffectsTooltip,
                 visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
@@ -740,7 +750,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          _buildGateButtons(widget.level.availableGates),
+          _buildGateButtons(widget.level.availableGates, currentPlayer),
           const SizedBox(height: 16),
           if (_entangledErrorMessage != null)
             Text(
@@ -751,23 +761,23 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
             if (_selectedGate == null)
               Text(
                 _allowFreeSelectionOrder
-                    ? 'ゲートまたは盤面を選択してください'
-                    : '先にゲートを選択してください',
+                    ? AppLocalizations.of(context).hintSelectGateOrBoard
+                    : AppLocalizations.of(context).hintSelectGateFirst,
                 style: const TextStyle(color: Colors.white70),
               ),
             if (_selectedGate != null && _selectedGate!.isTwoBitGate)
               Text(
                 _selectedPositions.isEmpty
-                    ? '1マス目を選択してください'
+                    ? AppLocalizations.of(context).hintSelectFirstCell
                     : _selectedPositions.length == 1
-                        ? '2マス目を選択してください'
-                        : '2マス選択済み',
+                        ? AppLocalizations.of(context).hintSelectSecondCell
+                        : AppLocalizations.of(context).hintTwoCellsSelected,
                 style: const TextStyle(color: Colors.white70),
               ),
             if (_selectedGate != null && _selectedGate!.isOneBitGate)
-              const Text(
-                '行/列ボタンまたはマスを選択してください',
-                style: TextStyle(color: Colors.white70),
+              Text(
+                AppLocalizations.of(context).hintSelectRowColumnOrCell,
+                style: const TextStyle(color: Colors.white70),
               ),
           ],
           const SizedBox(height: 16),
@@ -782,9 +792,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                   : Colors.grey.shade700,
               foregroundColor: Colors.white,
             ),
-            child: const Text(
-              'ゲートを適用',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).applyGate,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -799,9 +809,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
               backgroundColor: Colors.grey.shade700,
               foregroundColor: Colors.white,
             ),
-            child: const Text(
-              'リセット',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).reset,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -814,9 +824,10 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   }
 
   void _showGateInfoDialog(BuildContext context) {
-    const pages = [
-      ('assets/GateCheckpng.png', 'ゲート効果①'),
-      ('assets/blackCNOT_all.png', 'ゲート効果②'),
+    final l10n = AppLocalizations.of(context);
+    final pages = [
+      ('assets/GateCheckpng.png', l10n.gateEffectPage1),
+      ('assets/blackCNOT_all.png', l10n.gateEffectPage2),
     ];
 
     int currentPage = 0;
@@ -827,9 +838,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1A1F3A),
-              title: const Text(
-                'ゲート効果',
-                style: TextStyle(color: Colors.white),
+              title: Text(
+                l10n.gateEffectsTitle,
+                style: const TextStyle(color: Colors.white),
               ),
               content: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
@@ -872,7 +883,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${currentPage + 1} / ${pages.length}',
+                      l10n.pageCounter(currentPage + 1, pages.length),
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -881,7 +892,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('閉じる'),
+                  child: Text(l10n.close),
                 ),
               ],
             );
@@ -891,75 +902,52 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     );
   }
 
-  Widget _buildGateButtons(List<GateType> availableGates) {
-    // 使用可能なゲートをカテゴリごとに分類
+  Widget _buildGateButtons(List<GateType> availableGates, Player? player) {
     final oneBitGates = availableGates.where((g) => g.isOneBitGate).toList();
     final twoBitGates = availableGates.where((g) => g.isTwoBitGate).toList();
-
-    // 1ビットゲートをH, X, Y, Zの順に並べる
     final orderedOneBitGates = [
       if (oneBitGates.contains(GateType.h)) GateType.h,
       if (oneBitGates.contains(GateType.x)) GateType.x,
       if (oneBitGates.contains(GateType.y)) GateType.y,
       if (oneBitGates.contains(GateType.z)) GateType.z,
     ];
-
-    // 2ビットゲートをCNOT, SWAPの順に並べる
     final orderedTwoBitGates = [
       if (twoBitGates.contains(GateType.cnot)) GateType.cnot,
       if (twoBitGates.contains(GateType.swap)) GateType.swap,
     ];
 
-    return Column(
-      children: [
-        // 1行目: 1ビットゲート
-        if (orderedOneBitGates.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: orderedOneBitGates.map((gate) {
-              final isSelected = _selectedGate == gate;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: SizedBox(
-                  key: gate == GateType.x ? _xGateButtonKey : null,
-                  width: 60,
-                  child: GateButton(
-                    gate: gate,
-                    isEnabled: true,
-                    isSelected: isSelected,
-                    onTap: () {
-                      _handleGateSelection(gate);
-                    },
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        if (orderedOneBitGates.isNotEmpty && orderedTwoBitGates.isNotEmpty)
-          const SizedBox(height: 8),
-        // 2行目: 2ビットゲート
-        if (orderedTwoBitGates.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: orderedTwoBitGates.map((gate) {
-              final isSelected = _selectedGate == gate;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: SizedBox(
-                  width: 60,
-                  child: GateButton(
-                    gate: gate,
-                    isEnabled: true,
-                    isSelected: isSelected,
-                    onTap: () {
-                      _handleGateSelection(gate);
-                    },
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-      ],
+    return ValueListenableBuilder<bool>(
+      valueListenable: GateEffectIconSetting.instance.notifier,
+      builder: (context, showIcons, _) {
+        final rows = showIcons
+            ? [
+                ...chunkGateRows(orderedOneBitGates, 2),
+                ...chunkGateRows(orderedTwoBitGates, 2),
+              ]
+            : [
+                if (orderedOneBitGates.isNotEmpty) orderedOneBitGates,
+                if (orderedTwoBitGates.isNotEmpty) orderedTwoBitGates,
+              ];
+        return GateButtonGrid(
+          rows: rows,
+          showEffectIcon: showIcons,
+          itemBuilder: (gate) {
+            return SizedBox(
+              key: gate == GateType.x ? _xGateButtonKey : null,
+              child: GateButton(
+                gate: gate,
+                isEnabled: true,
+                isSelected: _selectedGate == gate,
+                showEffectIcon: showIcons,
+                playerColor: player?.color ?? PlayerColor.black,
+                onTap: () {
+                  _handleGateSelection(gate);
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1004,7 +992,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       _cellDoubleTap.reset();
       setState(() {
-        _entangledErrorMessage = '先にゲートを選択してください';
+        _entangledErrorMessage =
+            AppLocalizations.of(context).hintSelectGateFirst;
       });
       return;
     }
@@ -1039,7 +1028,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
       if (piece != null && piece.isEntangled) {
         // エンタングル駒は選択不可
         setState(() {
-          _entangledErrorMessage = 'エンタングル駒は選択できません';
+          _entangledErrorMessage =
+              AppLocalizations.of(context).errorEntangledNotSelectable;
         });
       } else {
         // エラーメッセージをクリア
@@ -1068,7 +1058,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
             accepted = true;
             setState(() {
               _selectedPositions = [position];
-              _entangledErrorMessage = '隣接した駒のみ選択できます';
+              _entangledErrorMessage =
+                  AppLocalizations.of(context).errorAdjacentOnly;
             });
           }
         } else if (_selectedPositions.length == 2) {
@@ -1115,7 +1106,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         });
       } else {
         setState(() {
-          _entangledErrorMessage = 'エンタングル駒を含む領域は選択できません';
+          _entangledErrorMessage =
+              AppLocalizations.of(context).errorRegionContainsEntangled;
         });
       }
     }
@@ -1173,7 +1165,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     _cellDoubleTap.reset();
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() {
-        _entangledErrorMessage = '先にゲートを選択してください';
+        _entangledErrorMessage =
+            AppLocalizations.of(context).hintSelectGateFirst;
       });
       return;
     }
@@ -1211,7 +1204,8 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     _cellDoubleTap.reset();
     if (!_allowFreeSelectionOrder && _selectedGate == null) {
       setState(() {
-        _entangledErrorMessage = '先にゲートを選択してください';
+        _entangledErrorMessage =
+            AppLocalizations.of(context).hintSelectGateFirst;
       });
       return;
     }
@@ -1256,6 +1250,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   void _applyGate(BuildContext context, GameProvider provider) async {
     if (!_canApplyGate()) return;
+    final l10n = AppLocalizations.of(context);
     playGateApplySound(
       provider.gameState,
       _selectedGate!,
@@ -1267,7 +1262,10 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
     if (!success) {
       setState(() {
-        _entangledErrorMessage = provider.errorMessage ?? 'ゲートを適用できませんでした';
+        _entangledErrorMessage =
+            provider.errorMessage == GameProvider.gateApplyForbiddenErrorCode
+                ? l10n.errorGateApplyFailedForbidden
+                : (provider.errorMessage ?? l10n.errorGateApplyFailed);
       });
       return;
     }
@@ -1366,20 +1364,21 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
     int turnsUsed,
     ChallengeLevel? nextLevel,
   ) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          '🎉 レベルクリア！',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.challengeLevelClearTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'レベル ${widget.level.displayLabel} をクリアしました！',
+              l10n.challengeLevelClearMessage(widget.level.displayLabel),
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),
@@ -1395,7 +1394,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '使用ターン数: $turnsUsed',
+              l10n.challengeTurnsUsed(turnsUsed),
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 24),
@@ -1418,9 +1417,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.ok,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -1445,9 +1444,9 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      '次へ',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.next,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,

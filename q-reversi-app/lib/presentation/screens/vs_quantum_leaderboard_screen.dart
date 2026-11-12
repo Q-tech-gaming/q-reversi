@@ -5,6 +5,7 @@ import '../../data/vs/vs_quantum_leaderboard_repository.dart';
 import '../../domain/services/time_attack_local_profile_service.dart';
 import '../../domain/vs/vs_quantum_leaderboard_entry.dart';
 import '../../core/sound_effects.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/sound_back_button.dart';
 import '../widgets/time_attack_nickname_dialog.dart';
 import '../widgets/time_attack_rank_style.dart';
@@ -130,8 +131,8 @@ class _VsQuantumLeaderboardScreenState
                 .where((e) => !e.isMe)
                 .map((e) => e.nickname) ??
             const [],
-        title: 'プレイヤー名を変更',
-        confirmLabel: '保存',
+        title: AppLocalizations.of(context).nicknameChangeTitle,
+        confirmLabel: AppLocalizations.of(context).save,
       );
       if (ok && mounted) {
         await _load();
@@ -147,15 +148,17 @@ class _VsQuantumLeaderboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VS量子AI RANKING', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.vsQuantumAiRanking,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
         leading: const SoundBackButton(),
         actions: [
           IconButton(
-            tooltip: 'プレイヤー名',
+            tooltip: l10n.playerNameTooltip,
             onPressed: (_loading || _editingName)
                 ? null
                 : () {
@@ -165,7 +168,7 @@ class _VsQuantumLeaderboardScreenState
             icon: const Icon(Icons.badge_outlined),
           ),
           IconButton(
-            tooltip: '更新',
+            tooltip: l10n.refresh,
             onPressed: _loading
                 ? null
                 : () {
@@ -193,6 +196,7 @@ class _VsQuantumLeaderboardScreenState
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -203,10 +207,10 @@ class _VsQuantumLeaderboardScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'ランキングを読み込めませんでした',
+              Text(
+                l10n.rankingLoadFailed,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.redAccent),
+                style: const TextStyle(color: Colors.redAccent),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -214,7 +218,7 @@ class _VsQuantumLeaderboardScreenState
                   SoundEffects.instance.click();
                   _load();
                 },
-                child: const Text('再試行'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -231,11 +235,11 @@ class _VsQuantumLeaderboardScreenState
 
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 56,
                 child: Text(
                   '#',
@@ -244,13 +248,14 @@ class _VsQuantumLeaderboardScreenState
               ),
               Expanded(
                 child: Text(
-                  'ニックネーム',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                  l10n.rankingNicknameColumn,
+                  style:
+                      const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ),
               Text(
-                '勝利数',
-                style: TextStyle(color: Colors.white38, fontSize: 12),
+                l10n.rankingWinsColumn,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
           ),
@@ -295,6 +300,7 @@ class _VsQuantumLeaderboardScreenState
     required VsQuantumLeaderboardEntry? myEntry,
     required int? myRank,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -311,12 +317,12 @@ class _VsQuantumLeaderboardScreenState
           ),
         ),
         if (myEntry == null)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
-              'あなたの記録はまだありません',
+              l10n.rankingNoRecordYet,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
           )
         else

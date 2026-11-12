@@ -9,6 +9,8 @@ import '../../domain/entities/board.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/position.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/content/study_content.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/sound_back_button.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
@@ -126,75 +128,36 @@ class _StudyThreeCellGroverScreenState
   bool _shownStep10 = false;
   bool _shownStep11 = false;
 
-  final List<StudyTextTutorialStep> _tutorialSteps = const [
-    StudyTextTutorialStep(
-      title: '3マスで学ぶグローバーのアルゴリズム',
-      message:
-          'このページでは、量子コンピュータ特有のアルゴリズムの一つである"グローバーのアルゴリズム"を、3マス盤面と3つのゲートを用いて体験します。',
-    ),
-    StudyTextTutorialStep(
-      title: 'グローバーのアルゴリズムとは',
-      message:
-          'グローバーのアルゴリズムとは、たくさんの要素を持つデータベースの中から、指定された値を検索する「探索問題」を高速に解くための量子コンピュータのアルゴリズムで、大量のデータの中から、ある一つの値を検索したいときに効果を発揮します。',
-    ),
-    StudyTextTutorialStep(
-      title: '状態の数',
-      message:
-          '今回は3マス＝3量子ビットにこのアルゴリズムを適用してみます。3量子ビットになると、2の3乗で8個の組み合わせの量子状態ができます。',
-    ),
-    StudyTextTutorialStep(
-      title: '探し出す答え',
-      message: '今回は、8個のパラメータの中から、|111⟩状態を探し出す、という問題を解くこととします。',
-    ),
-    StudyTextTutorialStep(
-      title: '新たなゲート(CCZ)',
-      message:
-          '|111⟩を探し出すにあたり、新たなゲートが必要になります。一つ目は、CCZ(Control-Control-Z)です。これは、CNOT(Control-X)と同じ考え方で、1ビット目と2ビット目が黒|1⟩の時にのみ、3ビット目にZを適用する操作になります。これによって、探したい|111⟩に印をつけることができます。',
-    ),
-    StudyTextTutorialStep(
-      title: '新たなゲート(Diff)',
-      message:
-          'もう一つは、Diff(Diffusion/反転)ゲートです。今回の3量子ビット・|111⟩探索では、Diffは H→X→CCZ→X→H の合成ゲートとして実装できます。\n[Diff = H→X→CCZ→X→H]\nこの操作により、各状態の確率振幅は「平均値に対して反転」し、印をつけた目標状態の振幅を増幅できます。',
-    ),
-    StudyTextTutorialStep(
-      title: '量子回路',
-      message: 'さて、では早速このアルゴリズムを演算していきましょう。こちらの量子回路に従って、盤面にゲートを適用させてください。',
-      nextLabel: '次へ',
-    ),
-    StudyTextTutorialStep(
-      title: '重ね合わせの状態',
-      message: '全体にHを適用することで、盤面の量子状態を重ね合わせの状態にします。',
-    ),
-    StudyTextTutorialStep(
-      title: '印をつける',
-      message: 'CCZによって、量子回路から探したい数字に印(確率振幅の符号反転)をつけます。',
-    ),
-    StudyTextTutorialStep(
-      title: '反転する',
-      message: 'Diffゲートによって、印をつけた数字の確率振幅を平均に対して反転させます',
-    ),
-    StudyTextTutorialStep(
-      title: 'アルゴリズム1回分適用完了',
-      message:
-          'グローバーのアルゴリズムを1回適用しました。この時点で、|111⟩の存在確率が78%まで上がっています。もう1周アルゴリズムを適用すると、取り出したい状態の存在確率が最大化します。続けて、アルゴリズムを適用しましょう。',
-    ),
-    StudyTextTutorialStep(
-      title: 'アルゴリズム2周完了',
-      message:
-          'グローバーのアルゴリズムを2回分適用することで、存在確率を95%まで上げることができました。最後に測定をして、探したい状態を取り出しましょう。',
-    ),
-    StudyTextTutorialStep(
-      title: '測定完了',
-      message:
-          '8個の候補の中から、少ない操作で目標の|111⟩を取り出すことができました。\nこのように、重ね合わせなどの量子特有の性質を使うことで、問題によって効率よく解くことができるのです。',
-    ),
-    StudyTextTutorialStep(
-      title: 'グローバーのアルゴリズム',
-      message:
-          '今回は3ビットで|111⟩を探しましたが、ビット数を増やし、目標状態に印をつける回路を設計すれば、より多くの候補の中から効率よく探索できます。\n量子コンピュータには、ほかにも面白いアルゴリズムがたくさんあります。ぜひこの先も調べて学んでみてください。',
-      nextLabel: '完了',
-    ),
-  ];
+  late List<StudyTextTutorialStep> _tutorialSteps;
+
+  /// ステップ数・順序・ボタンラベルはロケールに依存しない。文言のみ [StudyContent] から取得する。
+  /// index 6（量子回路）は「次へ」、最終ステップは「完了」。
+  List<StudyTextTutorialStep> _buildTutorialSteps(
+    StudyContent content,
+    AppLocalizations l10n,
+  ) {
+    final t = content.threeCellSteps;
+    final lastIndex = t.length - 1;
+    return [
+      for (int i = 0; i < t.length; i++)
+        StudyTextTutorialStep(
+          title: t[i].title,
+          message: t[i].message,
+          nextLabel: i == lastIndex
+              ? l10n.done
+              : (i == 6 ? l10n.next : null),
+        ),
+    ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tutorialSteps = _buildTutorialSteps(
+      StudyContent.ofContext(context),
+      AppLocalizations.of(context),
+    );
+  }
   late final BgmHandle _bgm;
 
   @override
@@ -478,9 +441,9 @@ class _StudyThreeCellGroverScreenState
       _selectedPositions = [];
       if (!valid) {
         _sequenceFailed = true;
-        _message = '手順が違います。リセットで最初からやり直してください。';
+        _message = AppLocalizations.of(context).studyGroverWrongStep;
       } else if (_sequenceCompleted) {
-        _message = '回路をすべて消費しました。測定して状態を確定できます。';
+        _message = AppLocalizations.of(context).studyGroverCircuitConsumed;
       } else {
         _message = null;
       }
@@ -675,7 +638,8 @@ class _StudyThreeCellGroverScreenState
         (i) => i == picked ? QComplex.one : QComplex.zero,
       );
       _measured = true;
-      _message = '測定結果: ${_basisLabels[picked]}';
+      _message = AppLocalizations.of(context)
+          .studyGroverMeasureResult(_basisLabels[picked]);
     });
     if (_advancedFlowEnabled && !_shownStep11 && _waitingStep11AfterStep10) {
       _shownStep11 = true;
@@ -723,17 +687,17 @@ class _StudyThreeCellGroverScreenState
     }
   }
 
-  String _hintText() {
+  String _hintText(AppLocalizations l10n) {
     if (_sequenceFailed) {
-      return '手順が崩れました。リセットで最初からやり直してください。';
+      return l10n.studyGroverStepBroken;
     }
     if (_sequenceCompleted) {
-      return '回路の適用が完了しました。測定を押すと状態が確定します。';
+      return l10n.studyGroverCircuitDone;
     }
     if (_selectedGate == null) {
-      return 'H / CCZ / Diff のいずれかを選んでください。';
+      return l10n.studyGroverChooseGate;
     }
-    return '「ゲートを適用」を押してください。';
+    return l10n.studyGroverPressApply;
   }
 
   double _circuitColumnWidthForStep(_CircuitStep step) {
@@ -951,6 +915,7 @@ class _StudyThreeCellGroverScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final probs = _probabilities;
     final amps = _amplitudes.map((z) => z.re).toList();
     final board = _displayBoard;
@@ -959,9 +924,9 @@ class _StudyThreeCellGroverScreenState
         _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '3マスで学ぶ',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.studyThreeCellTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -1004,7 +969,7 @@ class _StudyThreeCellGroverScreenState
                                     child: Stack(
                                       children: [
                                         StudyQuantumGraphCard(
-                                          title: '確率振幅（-1 ～ 1）',
+                                          title: l10n.studyAmplitudeChartTitle,
                                           child: Stack(
                                             children: [
                                               StudyQuantumStateBarChart(
@@ -1112,7 +1077,7 @@ class _StudyThreeCellGroverScreenState
                                     child: Stack(
                                       children: [
                                         StudyQuantumGraphCard(
-                                          title: '存在確率（0 ～ 1）',
+                                          title: l10n.studyProbabilityChartTitle,
                                           child: StudyQuantumStateBarChart(
                                             values: probs,
                                             labels: _basisLabels,
@@ -1230,13 +1195,13 @@ class _StudyThreeCellGroverScreenState
                                           vertical: 8,
                                         ),
                                       ),
-                                      child: const Text('テキスト'),
+                                      child: Text(l10n.studyTextButton),
                                     ),
                                   ],
                                 ),
                                 if (!_sequenceFailed && !_sequenceCompleted)
                                   Text(
-                                    _hintText(),
+                                    _hintText(l10n),
                                     style: const TextStyle(
                                         color: Color(0xFFDDE4FF), fontSize: 12),
                                     textAlign: TextAlign.center,
@@ -1317,7 +1282,9 @@ class _StudyThreeCellGroverScreenState
                                         foregroundColor: Colors.white,
                                       ),
                                       child: Text(
-                                        _sequenceCompleted ? '測定' : 'ゲートを適用',
+                                        _sequenceCompleted
+                                            ? l10n.measure
+                                            : l10n.applyGate,
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -1334,9 +1301,9 @@ class _StudyThreeCellGroverScreenState
                                             const Color(0xFF607D8B),
                                         foregroundColor: Colors.white,
                                       ),
-                                      child: const Text(
-                                        'リセット',
-                                        style: TextStyle(
+                                      child: Text(
+                                        l10n.reset,
+                                        style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold),
                                       ),
@@ -1632,10 +1599,12 @@ class _GroverMeasureColumnPainter extends CustomPainter {
   _GroverMeasureColumnPainter({
     required this.isReady,
     required this.isDone,
+    required this.caption,
   });
 
   final bool isReady;
   final bool isDone;
+  final String caption;
 
   static const List<double> _wireYs = [18.0, 44.0, 70.0];
 
@@ -1683,7 +1652,7 @@ class _GroverMeasureColumnPainter extends CustomPainter {
 
     final cap = TextPainter(
       text: TextSpan(
-        text: '測定',
+        text: caption,
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.75),
           fontSize: 9,
@@ -1698,7 +1667,9 @@ class _GroverMeasureColumnPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GroverMeasureColumnPainter oldDelegate) {
-    return oldDelegate.isReady != isReady || oldDelegate.isDone != isDone;
+    return oldDelegate.isReady != isReady ||
+        oldDelegate.isDone != isDone ||
+        oldDelegate.caption != caption;
   }
 }
 
@@ -1725,6 +1696,7 @@ class _GroverMeasureColumn extends StatelessWidget {
               painter: _GroverMeasureColumnPainter(
                 isReady: isReady,
                 isDone: isDone,
+                caption: AppLocalizations.of(context).measure,
               ),
             ),
           ),

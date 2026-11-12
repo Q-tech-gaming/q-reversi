@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../../domain/entities/tutorial_content.dart';
+import '../../../l10n/app_localizations.dart';
 import 'tutorial_board_widget.dart';
 import 'tutorial_gate_transformation_widget.dart';
 import 'tutorial_comparison_diagram_widget.dart';
@@ -39,7 +40,7 @@ class TutorialVisualElementWidget extends StatelessWidget {
         return TutorialAnimationWidget(data: visualElement.data);
       
       case VisualElementType.video:
-        return _buildVideoWidget(visualElement.data);
+        return _buildVideoWidget(context, visualElement.data);
       
       case VisualElementType.image:
         final imagePath = visualElement.data?['path'] as String?;
@@ -53,10 +54,10 @@ class TutorialVisualElementWidget extends StatelessWidget {
                 color: Colors.white.withOpacity(0.2),
               ),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                '画像が見つかりません',
-                style: TextStyle(color: Colors.white70),
+                AppLocalizations.of(context).tutorialImageNotFound,
+                style: const TextStyle(color: Colors.white70),
               ),
             ),
           );
@@ -111,7 +112,10 @@ class TutorialVisualElementWidget extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '画像を読み込めません\n$normalizedPath\n\nエラー: ${error.toString()}',
+                        AppLocalizations.of(context).tutorialImageLoadError(
+                          normalizedPath,
+                          error.toString(),
+                        ),
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
@@ -128,7 +132,7 @@ class TutorialVisualElementWidget extends StatelessWidget {
     }
   }
 
-  Widget _buildVideoWidget(Map<String, dynamic>? data) {
+  Widget _buildVideoWidget(BuildContext context, Map<String, dynamic>? data) {
     final videoPath = data?['path'] as String?;
     if (videoPath == null) {
       return Container(
@@ -140,10 +144,10 @@ class TutorialVisualElementWidget extends StatelessWidget {
             color: Colors.white.withOpacity(0.2),
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            '動画パスが指定されていません',
-            style: TextStyle(color: Colors.white70),
+            AppLocalizations.of(context).tutorialVideoPathMissing,
+            style: const TextStyle(color: Colors.white70),
           ),
         ),
       );
@@ -233,7 +237,10 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
               ),
               const SizedBox(height: 8),
               Text(
-                '動画を読み込めません\n${widget.videoPath}\n\nエラー: $_errorMessage',
+                AppLocalizations.of(context).tutorialVideoLoadError(
+                  widget.videoPath,
+                  _errorMessage!,
+                ),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,

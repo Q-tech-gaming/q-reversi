@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class VsPlayGuideOverlay extends StatelessWidget {
   const VsPlayGuideOverlay({
     super.key,
-    required this.targetRect,
+    this.targetRect,
     required this.message,
     required this.nextLabel,
     required this.onNext,
@@ -13,7 +13,8 @@ class VsPlayGuideOverlay extends StatelessWidget {
     this.borderWidth = 2,
   });
 
-  final Rect targetRect;
+  /// 無いときは穴を開けず、画面中央に説明だけ出す。
+  final Rect? targetRect;
   final String message;
   final String nextLabel;
   final VoidCallback onNext;
@@ -25,7 +26,82 @@ class VsPlayGuideOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final padded = targetRect.inflate(highlightPadding);
+    final hole = targetRect;
+    if (hole == null) {
+      final bubbleWidth =
+          (screenSize.width - 48).clamp(220.0, 340.0).toDouble();
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: onNext,
+              behavior: HitTestBehavior.opaque,
+              child: const ColoredBox(color: Colors.black54),
+            ),
+          ),
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.center,
+              child: Material(
+                color: Colors.transparent,
+                child: SizedBox(
+                  width: bubbleWidth,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2A3158),
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            heightFactor: 1,
+                            child: InkWell(
+                              onTap: onNext,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  nextLabel,
+                                  style: const TextStyle(
+                                    color: Colors.lightBlueAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    final padded = hole.inflate(highlightPadding);
     final rawHighlight = Rect.fromCenter(
       center: padded.center,
       width: padded.width * scale,

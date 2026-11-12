@@ -1,6 +1,8 @@
 # プライバシーポリシー
 
-最終更新日: 2026年8月14日  
+[English](../en/)
+
+最終更新日: 2026年11月11日  
 開発者名: K.Suzuki  
 アプリ名: Qリバーシ  
 連絡先: qtechgaming1@gmail.com
@@ -22,7 +24,7 @@ K.Suzuki（以下「当方」といいます。）は、スマートフォンア
 
 ### 1.2 サーバーへ送信・保存する情報（Firebase）
 
-本アプリは、ランキングおよび関連機能のため、Google Firebase（Firebase Authentication、Cloud Firestore、Cloud Functions 等）を利用します。その過程で、次の情報がサーバーに送信・保存されることがあります。
+本アプリは、ランキングおよび関連機能のため、Google Firebase（Firebase Authentication、Cloud Firestore、Cloud Functions 等）を利用します。サーバー上のデータは、Firebase の東京リージョン（`asia-northeast1`）に保存されます。その過程で、次の情報がサーバーに送信・保存されることがあります。
 
 - **匿名識別子（UID）**  
   Firebase Anonymous Authentication により発行される識別子です。メールアドレスやパスワードの登録は不要です。アプリの削除、データの消去、端末変更等により、同一の識別子を引き継げない場合があります。
@@ -107,6 +109,7 @@ OSやアプリストア自体が行う通信は、当方が取得または管理
 
 - 開発者名: K.Suzuki
 - 連絡先: qtechgaming1@gmail.com
+- 対応言語: 日本語 / 英語
 
 ## 10. 準拠法および管轄
 

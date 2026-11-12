@@ -3,6 +3,7 @@ import '../../data/vs_game_persistence_service.dart';
 import '../../domain/entities/game_mode.dart';
 import '../../core/constants/game_constants.dart';
 import '../../core/sound_effects.dart';
+import '../../l10n/app_localizations.dart';
 import 'game_screen.dart';
 import '../../domain/entities/game_state.dart';
 import '../../domain/entities/board.dart';
@@ -83,27 +84,28 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
     });
   }
 
-  String _difficultyTitle(AIDifficulty d) {
+  String _difficultyTitle(AppLocalizations l10n, AIDifficulty d) {
     switch (d) {
       case AIDifficulty.beginner:
-        return '初級';
+        return l10n.difficultyBeginner;
       case AIDifficulty.intermediate:
-        return '中級';
+        return l10n.difficultyIntermediate;
       case AIDifficulty.advanced:
-        return '上級';
+        return l10n.difficultyAdvanced;
       case AIDifficulty.quantum:
-        return '量子AI';
+        return l10n.difficultyQuantumAi;
     }
   }
 
   Widget _buildDifficultyTitle(AIDifficulty d, bool unlocked) {
+    final l10n = AppLocalizations.of(context);
     if (d == AIDifficulty.quantum) {
       final labelRow = Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            '量子AI',
+            l10n.difficultyQuantumAi,
             style: TextStyle(
               color: unlocked ? const Color(0xFF9B6DFF) : Colors.white54,
               fontWeight: FontWeight.bold,
@@ -154,7 +156,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
         ],
         Expanded(
           child: Text(
-            _difficultyTitle(d),
+            _difficultyTitle(l10n, d),
             style: TextStyle(
               color: unlocked ? Colors.white : Colors.white54,
             ),
@@ -238,6 +240,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
   }
 
   Widget _buildCpuStatsCell(VsCpuProgressSnapshot snap, AIDifficulty d) {
+    final l10n = AppLocalizations.of(context);
     if (!snap.isUnlocked(d)) {
       return Text(
         '—',
@@ -251,7 +254,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '${st.wins}勝 / ${st.played}戦',
+          l10n.vsRecordSummary(st.wins, st.played),
           textAlign: TextAlign.right,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -268,6 +271,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
   }
 
   Widget _buildCpuDifficultyBlock() {
+    final l10n = AppLocalizations.of(context);
     if (_cpuProgressLoading || _cpuProgress == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -286,9 +290,9 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'CPU難易度',
-          style: TextStyle(
+        Text(
+          l10n.vsCpuDifficultyHeading,
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -296,18 +300,18 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          '各難易度に勝利すると次の難易度が解放されます。',
+          l10n.vsDifficultyUnlockNote,
           style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13),
         ),
         const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(
+            Expanded(
               flex: 5,
               child: Text(
-                '難易度',
-                style: TextStyle(
+                l10n.vsDifficultyColumn,
+                style: const TextStyle(
                   color: Colors.white54,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -319,10 +323,10 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
-                    '成績',
+                  Text(
+                    l10n.vsRecordColumn,
                     textAlign: TextAlign.right,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -332,11 +336,11 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _legendChip(_barLoss, '負'),
+                      _legendChip(_barLoss, l10n.vsLegendLoss),
                       const SizedBox(width: 8),
-                      _legendChip(_barDraw, '引'),
+                      _legendChip(_barDraw, l10n.vsLegendDraw),
                       const SizedBox(width: 8),
-                      _legendChip(_barWin, '勝'),
+                      _legendChip(_barWin, l10n.vsLegendWin),
                     ],
                   ),
                 ],
@@ -361,7 +365,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                     title: _buildDifficultyTitle(d, unlocked),
                     subtitle: d == AIDifficulty.quantum
                         ? Text(
-                            '量子コンピュータで機械学習したAI',
+                            l10n.vsQuantumAiDescription,
                             style: TextStyle(
                               color: unlocked ? Colors.white54 : Colors.white38,
                               fontSize: 11,
@@ -399,11 +403,12 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'VSモード設定',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.vsSetupTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -424,9 +429,9 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
-                '対戦モード',
-                style: TextStyle(
+              Text(
+                l10n.vsBattleModeHeading,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -434,9 +439,9 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
               ),
               const SizedBox(height: 8),
               RadioListTile<VsMode>(
-                title: const Text(
-                  '対CPU戦',
-                  style: TextStyle(color: Colors.white),
+                title: Text(
+                  l10n.vsModeVsCpu,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 value: VsMode.cpu,
                 groupValue: _vsMode,
@@ -457,7 +462,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                       const SizedBox(width: 6),
                     ],
                     Text(
-                      '対人戦',
+                      l10n.vsModeVsHuman,
                       style: TextStyle(
                         color: _humanModeUnlocked ? Colors.white : Colors.white54,
                       ),
@@ -467,7 +472,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                 subtitle: _humanModeUnlocked
                     ? null
                     : Text(
-                        '対CPU戦を1回プレイすると解放されます',
+                        l10n.vsVsHumanLocked,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.55),
                           fontSize: 12,
@@ -487,9 +492,9 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                 _buildCpuDifficultyBlock(),
               ],
               const SizedBox(height: 16),
-              const Text(
-                'ターン数',
-                style: TextStyle(
+              Text(
+                l10n.vsTurnsHeading,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -498,7 +503,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
               if (!_turnOptionsUnlocked) ...[
                 const SizedBox(height: 6),
                 Text(
-                  '最初は20ターン固定です。対CPU戦を1回プレイすると変更できます。',
+                  l10n.vsTurnsLockedNote,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.55),
                     fontSize: 12,
@@ -542,7 +547,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                     .map((turns) {
                   return DropdownMenuItem<int>(
                     value: turns,
-                    child: Text('$turnsターン'),
+                    child: Text(l10n.vsTurnsOption(turns)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -564,9 +569,9 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                   backgroundColor: const Color(0xFF6B46C1),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text(
-                  'ゲーム開始',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
+                child: Text(
+                  l10n.vsStartGame,
+                  style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
               // 量子AI対戦の解放前でも閲覧可（対戦解放自体は従来どおり進行条件）
@@ -584,7 +589,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
                       )
                     : const Icon(Icons.emoji_events, size: 22),
                 label: Text(
-                  _openingRanking ? '読み込み中…' : 'VS量子AI RANKING',
+                  _openingRanking ? l10n.loading : l10n.vsQuantumAiRanking,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

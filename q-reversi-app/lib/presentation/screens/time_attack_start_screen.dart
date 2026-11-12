@@ -6,6 +6,7 @@ import '../../data/firebase/time_attack_run_remote_service.dart';
 import '../../data/time_attack/time_attack_run_launcher.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/operation_order_settings_dialog.dart';
 import '../widgets/sound_back_button.dart';
 import 'time_attack_game_screen.dart';
@@ -58,7 +59,7 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
       setState(() {
         _error = e is TimeAttackRunRemoteException
             ? e.message
-            : 'TIME ATTACKの開始には通信が必要です。';
+            : AppLocalizations.of(context).timeAttackNetworkRequired;
         _starting = false;
       });
     }
@@ -99,17 +100,19 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
       appBar: AppBar(
-        title: const Text('タイムアタックモード', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.timeAttackModeTitle,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
         leading: const SoundBackButton(),
         actions: [
           IconButton(
-            tooltip: '設定',
+            tooltip: l10n.settings,
             icon: const Icon(Icons.settings_outlined),
             onPressed: _busy
                 ? null
@@ -136,26 +139,28 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                const Text(
-                  'タイムアタック\nチャレンジ',
+                Text(
+                  l10n.timeAttackHeroTitle,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  '30秒からスタート。\n問題を解くとTIMEが追加されます。',
+                Text(
+                  l10n.timeAttackIntro,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 16, height: 1.5),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'PERFECTを連続するとCOMBO BONUS!',
+                Text(
+                  l10n.timeAttackComboHint,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFFB794F4), fontSize: 14),
+                  style:
+                      const TextStyle(color: Color(0xFFB794F4), fontSize: 14),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 24),
@@ -167,7 +172,7 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: _busy ? null : _start,
-                    child: const Text('再試行'),
+                    child: Text(l10n.retry),
                   ),
                 ],
                 const Spacer(),
@@ -187,9 +192,9 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'START',
-                          style: TextStyle(
+                      : Text(
+                          l10n.timeAttackStart,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
@@ -209,7 +214,7 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                         )
                       : const Icon(Icons.emoji_events, size: 22),
                   label: Text(
-                    _openingRanking ? '読み込み中…' : 'RANKING',
+                    _openingRanking ? l10n.loading : l10n.timeAttackRanking,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -229,10 +234,10 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                 ),
                 if (kDebugMode) ...[
                   const SizedBox(height: 20),
-                  const Text(
-                    'DEBUG PREVIEW',
+                  Text(
+                    l10n.timeAttackDebugPreview,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.amber,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -249,7 +254,7 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                       side: BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('CLEAR 画面を見る'),
+                    child: Text(l10n.timeAttackDebugViewClear),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton(
@@ -261,7 +266,7 @@ class _TimeAttackStartScreenState extends State<TimeAttackStartScreen> {
                       side: BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('ALL CLEAR 画面を見る'),
+                    child: Text(l10n.timeAttackDebugViewAllClear),
                   ),
                 ],
                 const SizedBox(height: 24),

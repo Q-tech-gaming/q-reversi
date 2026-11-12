@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../domain/entities/board.dart';
 import '../../../domain/entities/position.dart';
 import '../../../domain/entities/gate_type.dart';
 import '../../../domain/entities/piece_type.dart';
 import '../../../domain/entities/piece.dart';
+import '../../gate_effect_icon_setting.dart';
 import '../board_widget.dart';
 import '../gate_button.dart';
+import '../gate_button_grid.dart';
 
 /// 基本操作デモアニメーション
 class TutorialOperationDemoAnimation extends StatefulWidget {
@@ -85,7 +88,8 @@ class _TutorialOperationDemoAnimationState
       });
     
     _controller.repeat();
-    
+    GateEffectIconSetting.instance.notifier.addListener(_onIconSetting);
+
     // 初期位置を設定
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateHandPosition();
@@ -285,8 +289,13 @@ class _TutorialOperationDemoAnimationState
     }
   }
 
+  void _onIconSetting() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    GateEffectIconSetting.instance.notifier.removeListener(_onIconSetting);
     _controller.dispose();
     super.dispose();
   }
@@ -456,7 +465,9 @@ class _TutorialOperationDemoAnimationState
     return LayoutBuilder(
       builder: (context, constraints) {
         // 利用可能な高さから、ゲートボタンと適用ボタンの高さを引く
-        const gateButtonAreaHeight = 120.0; // ゲートボタンエリアの推定高さ
+        final showIcons = GateEffectIconSetting.instance.notifier.value;
+        final gateButtonAreaHeight =
+            showIcons ? 210.0 : 120.0; // ゲートボタンエリアの推定高さ
         const applyButtonHeight = 60.0; // 適用ボタンの高さ
         const padding = 16.0 * 2; // 上下のパディング
         final availableHeight = constraints.maxHeight - gateButtonAreaHeight - applyButtonHeight - padding;
@@ -492,24 +503,31 @@ class _TutorialOperationDemoAnimationState
                     // ゲート選択UI
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: GateType.values.where((g) => g.isOneBitGate).map((gate) {
-                          final isSelected = _selectedGate == gate;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: SizedBox(
-                              width: 60,
-                              child: GateButton(
-                                key: _gateButtonKeys[gate],
-                                gate: gate,
-                                isEnabled: true,
-                                isSelected: isSelected,
-                                onTap: null, // デモなのでタップ無効
-                              ),
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: GateEffectIconSetting.instance.notifier,
+                        builder: (context, iconsOn, _) {
+                          const gates = [
+                            GateType.h,
+                            GateType.x,
+                            GateType.y,
+                            GateType.z,
+                          ];
+                          final rows = iconsOn
+                              ? chunkGateRows(gates, 2)
+                              : [gates];
+                          return GateButtonGrid(
+                            rows: rows,
+                            showEffectIcon: iconsOn,
+                            itemBuilder: (gate) => GateButton(
+                              key: _gateButtonKeys[gate],
+                              gate: gate,
+                              isEnabled: true,
+                              isSelected: _selectedGate == gate,
+                              showEffectIcon: iconsOn,
+                              onTap: null, // デモなのでタップ無効
                             ),
                           );
-                        }).toList(),
+                        },
                       ),
                     ),
                     
@@ -533,9 +551,9 @@ class _TutorialOperationDemoAnimationState
                                 : Colors.grey.shade700,
                           ),
                         ),
-                        child: const Text(
-                          'ゲートを適用',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context).applyGate,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,

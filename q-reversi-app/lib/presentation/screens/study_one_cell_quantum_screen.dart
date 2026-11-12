@@ -8,11 +8,15 @@ import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/position.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/content/study_content.dart';
 import '../widgets/piece_widget.dart';
 import '../widgets/study/bloch_sphere_widget.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
 import '../widgets/study/study_text_tutorial_overlay.dart';
+import '../gate_effect_icon_setting.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/gate_button_grid.dart';
 import '../widgets/sound_back_button.dart';
 import '../../domain/services/study_text_progress_service.dart';
 
@@ -56,49 +60,63 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
   bool _hasAppliedAnyGate = false;
   bool _waitingGateApply = false;
   bool _waitingAmplitudeTabTap = false;
-  late final List<StudyTextTutorialStep> _tutorialSteps;
+  late List<StudyTextTutorialStep> _tutorialSteps;
   late final BgmHandle _bgm;
+
+  /// ステップ index / ターゲットキー / ボタンラベルはロケールに依存しない。
+  /// 文言のみ [StudyContent] から取得する。
+  List<StudyTextTutorialStep> _buildTutorialSteps(
+    StudyContent content,
+    AppLocalizations l10n,
+  ) {
+    final t = content.oneCellSteps;
+    return [
+      StudyTextTutorialStep(
+        title: t[0].title,
+        message: t[0].message,
+      ),
+      StudyTextTutorialStep(
+        title: t[1].title,
+        targetKey: _upperHalfAreaKey,
+        message: t[1].message,
+      ),
+      StudyTextTutorialStep(
+        title: t[2].title,
+        message: t[2].message,
+      ),
+      StudyTextTutorialStep(
+        title: t[3].title,
+        targetKey: _amplitudeTabKey,
+        message: t[3].message,
+        highlightExpandX: 10,
+      ),
+      StudyTextTutorialStep(
+        title: t[4].title,
+        targetKey: _amplitudeGraphKey,
+        message: t[4].message,
+      ),
+      StudyTextTutorialStep(
+        title: t[5].title,
+        targetKey: _probabilityGraphKey,
+        message: t[5].message,
+        nextLabel: l10n.done,
+      ),
+    ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tutorialSteps = _buildTutorialSteps(
+      StudyContent.ofContext(context),
+      AppLocalizations.of(context),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _bgm = BgmHandle.hold(Bgm.study);
-    _tutorialSteps = [
-      const StudyTextTutorialStep(
-        title: '1マスで学ぶ量子コンピュータ',
-        message: 'このページでは、1量子ビットに対応する1マス盤面に対して、ブロッホ球と確率振幅グラフを用いて量子状態を直感的に学びます。',
-      ),
-      StudyTextTutorialStep(
-        title: 'ブロッホ球',
-        targetKey: _upperHalfAreaKey,
-        message:
-            'ブロッホ球とは、量子ビットの状態を球面上の点で表すモデルです。ここでは青の点で表しています。\nまた、ゲートの適用は、対応する軸まわりの回転として表現することができます。\nまずはゲートを1つ適用してみましょう。',
-      ),
-      const StudyTextTutorialStep(
-        title: 'ゲート操作',
-        message:
-            'ゲートを適用すると、青の点がゲートの軸まわりに回転したかと思います。ブロッホ球は左右にスクロールして視点を変えることもできるので、ほかのゲートでも試してみてください。',
-      ),
-      StudyTextTutorialStep(
-        title: '確率振幅へ',
-        targetKey: _amplitudeTabKey,
-        message: '次は確率振幅を見てみましょう。準備ができたら「確率振幅」をタップしてください。',
-        highlightExpandX: 10,
-      ),
-      StudyTextTutorialStep(
-        title: '確率振幅',
-        targetKey: _amplitudeGraphKey,
-        message:
-            '量子ビットは0と1の中間状態を取り、その状態は複素数で表されます。確率振幅は、観測時に0または1として現れる重みを表す量です。\n※このゲームでは、グローバル位相（全成分に共通の位相）を除き、先頭の非ゼロ振幅が正の実数になるようにそろえたうえで、実数振幅（-1～1）として表示しています。',
-      ),
-      StudyTextTutorialStep(
-        title: '存在確率',
-        targetKey: _probabilityGraphKey,
-        message:
-            '確率振幅は2乗すると存在確率（観測される確率）になります。\nゲートを操作して、それぞれの駒の確率振幅と存在確率の両方を見比べてみてください。',
-        nextLabel: '完了',
-      ),
-    ];
     _upperTabController = TabController(length: 2, vsync: this);
     _upperTabController.addListener(() {
       if (_upperTabController.indexIsChanging) return;
@@ -391,18 +409,18 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
     }
   }
 
-  String _stateLabel(PieceType type) {
+  String _stateLabel(AppLocalizations l10n, PieceType type) {
     switch (type) {
       case PieceType.white:
-        return '白駒 |0⟩';
+        return l10n.studyStateWhite;
       case PieceType.black:
-        return '黒駒 |1⟩';
+        return l10n.studyStateBlack;
       case PieceType.grayPlus:
-        return 'グレープラス |+⟩';
+        return l10n.studyStateGrayPlus;
       case PieceType.grayMinus:
-        return 'グレーマイナス |-⟩';
+        return l10n.studyStateGrayMinus;
       default:
-        return '未対応';
+        return l10n.studyStateUnsupported;
     }
   }
 
@@ -436,6 +454,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
   }
 
   Widget _buildAmplitudeGraphTab(BlochVector v) {
+    final l10n = AppLocalizations.of(context);
     final cpx = globalPhaseGaugeFirstPositive(_complexAmplitudes01(v));
     final amps = cpx.map((z) => z.re).toList();
     final probs = cpx.map((z) => z.normSquared().clamp(0.0, 1.0)).toList();
@@ -448,7 +467,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
             child: Container(
               key: _amplitudeGraphKey,
               child: StudyQuantumGraphCard(
-                title: '確率振幅（-1 ～ 1）',
+                title: l10n.studyAmplitudeChartTitle,
                 child: StudyQuantumStateBarChart(
                   values: amps,
                   labels: _basisLabelsOne,
@@ -466,7 +485,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
             child: Container(
               key: _probabilityGraphKey,
               child: StudyQuantumGraphCard(
-                title: '存在確率（0 ～ 1）',
+                title: l10n.studyProbabilityChartTitle,
                 child: StudyQuantumStateBarChart(
                   values: probs,
                   labels: _basisLabelsOne,
@@ -486,6 +505,7 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final piece = Piece(
       id: 'study_one_cell',
       type: _pieceType,
@@ -499,9 +519,9 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
         tutorialIndex == null ? null : _tutorialSteps[tutorialIndex];
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '1マスで学ぶ',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.studyOneCellTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -536,10 +556,10 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                               unselectedLabelColor: Colors.white54,
                               indicatorColor: const Color(0xFF9C6BFF),
                               tabs: [
-                                const Tab(text: 'ブロッホ球'),
+                                Tab(text: l10n.studyTabBlochSphere),
                                 Tab(
                                   key: _amplitudeTabKey,
-                                  text: '確率振幅',
+                                  text: l10n.studyTabAmplitude,
                                 ),
                               ],
                             ),
@@ -642,13 +662,14 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                                           vertical: 8,
                                         ),
                                       ),
-                                      child: const Text('テキスト'),
+                                      child: Text(l10n.studyTextButton),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '現在の状態: ${_stateLabel(_pieceType)}',
+                                  l10n.studyCurrentState(
+                                      _stateLabel(l10n, _pieceType)),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -675,24 +696,27 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: _oneBitGates.map((gate) {
-                                    final isSelected = _selectedGate == gate;
-                                    return SizedBox(
-                                      width: 60,
-                                      child: GateButton(
+                                ValueListenableBuilder<bool>(
+                                  valueListenable:
+                                      GateEffectIconSetting.instance.notifier,
+                                  builder: (context, showIcons, _) {
+                                    final rows = showIcons
+                                        ? chunkGateRows(_oneBitGates, 2)
+                                        : [_oneBitGates];
+                                    return GateButtonGrid(
+                                      rows: rows,
+                                      showEffectIcon: showIcons,
+                                      itemBuilder: (gate) => GateButton(
                                         gate: gate,
                                         isEnabled: !_isAnimating,
-                                        isSelected: isSelected,
+                                        isSelected: _selectedGate == gate,
+                                        showEffectIcon: showIcons,
                                         onTap: () {
                                           _onSelectGate(gate);
                                         },
                                       ),
                                     );
-                                  }).toList(),
+                                  },
                                 ),
                                 const SizedBox(height: 12),
                                 ElevatedButton(
@@ -712,7 +736,9 @@ class _StudyOneCellQuantumScreenState extends State<StudyOneCellQuantumScreen>
                                     foregroundColor: Colors.white,
                                   ),
                                   child: Text(
-                                    _isAnimating ? '適用中...' : 'ゲートを適用',
+                                    _isAnimating
+                                        ? l10n.studyApplying
+                                        : l10n.applyGate,
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,

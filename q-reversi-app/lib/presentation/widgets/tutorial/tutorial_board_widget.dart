@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../domain/entities/board.dart';
 import '../../../domain/entities/piece.dart';
 import '../../../domain/entities/piece_type.dart';
@@ -154,9 +155,9 @@ class TutorialBoardWidget extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        '量子コンピュータ',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context).tutorialQuantumComputer,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -182,19 +183,22 @@ class TutorialBoardWidget extends StatelessWidget {
                                   color: Colors.white.withOpacity(0.2),
                                 ),
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.error_outline,
                                       color: Colors.white70,
                                       size: 48,
                                     ),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     Text(
-                                      '画像を読み込めません\nassets/QC_img.png',
-                                      style: TextStyle(
+                                      AppLocalizations.of(context).tutorialImageLoadError(
+                                        'assets/QC_img.png',
+                                        error.toString(),
+                                      ),
+                                      style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 12,
                                       ),
@@ -214,9 +218,9 @@ class TutorialBoardWidget extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Qリバーシ',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context).tutorialQReversi,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

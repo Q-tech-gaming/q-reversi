@@ -3,7 +3,7 @@ description: Q-Reversi - Quantum Computing Reversi Game
 repository: https://github.com/q-tech-gaming/q-reversi
 homepage: https://q-tech-gaming.github.io/q-reversi/
 publish_to: 'none'
-version: 1.5.1+16
+version: 2.0.0+17
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -11,6 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   
   # 状態管理
   provider: ^6.1.1
@@ -49,6 +52,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
 
 flutter:
+  generate: true
   uses-material-design: true
   
   assets:

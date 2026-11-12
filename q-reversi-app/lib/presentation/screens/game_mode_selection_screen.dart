@@ -20,6 +20,7 @@ import '../../domain/services/game_service.dart';
 import '../widgets/operation_order_settings_dialog.dart';
 import '../widgets/app_legal_info_sheet.dart';
 import '../../data/firebase/backend_warmup.dart';
+import '../../l10n/app_localizations.dart';
 import 'time_attack_start_screen.dart';
 
 /// ゲームモード選択画面
@@ -129,15 +130,17 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
       );
     }
 
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Qリバーシ',
-              style: TextStyle(color: Colors.white),
+            Text(
+              l10n.appTitle,
+              style: const TextStyle(color: Colors.white),
             ),
             if (kDebugMode) ...[
               const SizedBox(width: 8),
@@ -165,7 +168,7 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            tooltip: 'ヘルプ・情報',
+            tooltip: l10n.helpAndInfo,
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               SoundEffects.instance.click();
@@ -173,7 +176,7 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
             },
           ),
           IconButton(
-            tooltip: '設定',
+            tooltip: l10n.settings,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
               SoundEffects.instance.click();
@@ -199,8 +202,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
             children: [
               _buildModeCard(
                 context,
-                'チュートリアル',
-                'ゲームの遊び方説明',
+                l10n.modeTutorialTitle,
+                l10n.modeTutorialSubtitle,
                 Icons.menu_book,
                 () async {
                   final result = await Navigator.push<String>(
@@ -227,8 +230,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               const SizedBox(height: 16),
               _buildModeCard(
                 context,
-                'チャレンジモード',
-                '特定の量子状態を作るパズルゲーム',
+                l10n.modeChallengeTitle,
+                l10n.modeChallengeSubtitle,
                 Icons.flag,
                 () async {
                   await Navigator.push(
@@ -244,8 +247,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               const SizedBox(height: 16),
               _buildModeCard(
                 context,
-                'タイムアタックモード',
-                'タイムアタックでランキング',
+                l10n.modeTimeAttackTitle,
+                l10n.modeTimeAttackSubtitle,
                 Icons.timer,
                 () {
                   BackendWarmup.kickoff();
@@ -262,8 +265,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               const SizedBox(height: 16),
               _buildModeCard(
                 context,
-                'VSモード',
-                '2人対戦のモード',
+                l10n.modeVsTitle,
+                l10n.modeVsSubtitle,
                 Icons.people,
                 () => _openVsMode(context),
                 enabled: _isStage0RequirementMet,
@@ -272,8 +275,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               const SizedBox(height: 16),
               _buildModeCard(
                 context,
-                'フリーランモード',
-                '自由にゲートを演算できるモード',
+                l10n.modeFreeRunTitle,
+                l10n.modeFreeRunSubtitle,
                 Icons.science,
                 () {
                   _startFreeRunMode(context);
@@ -284,8 +287,8 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               const SizedBox(height: 16),
               _buildModeCard(
                 context,
-                'スタディモード',
-                '量子コンピュータを感覚的に学習',
+                l10n.modeStudyTitle,
+                l10n.modeStudySubtitle,
                 Icons.school,
                 () {
                   Navigator.push(
@@ -306,12 +309,11 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
   }
 
   void _showStage0LockedMessage() {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'チャレンジモードのステージ0をクリアすると、このモードが解放されます',
-        ),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(l10n.modeUnlockByChallengeStage0),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -363,11 +365,11 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
                   return;
                 }
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                      'チュートリアルを完了またはスキップしてから、このモードをプレイできます',
+                      AppLocalizations.of(context).modeRequiresTutorial,
                     ),
-                    duration: Duration(seconds: 2),
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               },
@@ -390,13 +392,13 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          '続きから対戦',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          AppLocalizations.of(ctx).resumeBattleTitle,
+          style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          '前回の続きから対戦を開始しますか？',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          AppLocalizations.of(ctx).resumeBattleMessage,
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -404,9 +406,9 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               SoundEffects.instance.click();
               Navigator.pop(ctx, false);
             },
-            child: const Text(
-              '最初から',
-              style: TextStyle(color: Colors.white70),
+            child: Text(
+              AppLocalizations.of(ctx).startOver,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
           TextButton(
@@ -414,9 +416,9 @@ class _GameModeSelectionScreenState extends State<GameModeSelectionScreen> {
               SoundEffects.instance.click();
               Navigator.pop(ctx, true);
             },
-            child: const Text(
-              'はい',
-              style: TextStyle(color: Colors.white),
+            child: Text(
+              AppLocalizations.of(ctx).yes,
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],

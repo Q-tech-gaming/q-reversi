@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/sound_effects.dart';
 import '../../domain/entities/game_mode.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/sound_back_button.dart';
 import 'study_quantum_intro_screen.dart';
 import 'study_one_cell_quantum_screen.dart';
@@ -12,41 +13,43 @@ import 'study_epilogue_screen.dart';
 class StudyModeMenuScreen extends StatelessWidget {
   const StudyModeMenuScreen({super.key});
 
-  static const List<_StudyMenuItem> _items = [
+  static List<_StudyMenuItem> _buildItems(AppLocalizations l10n) => [
     _StudyMenuItem(
       mode: StudyMode.intro,
-      title: '量子コンピュータとは？',
+      title: l10n.studyMenuIntro,
       icon: Icons.lightbulb_outline,
     ),
     _StudyMenuItem(
       mode: StudyMode.study1,
-      title: '1マスで学ぶ\n量子コンピュータ',
+      title: l10n.studyMenuOneCell,
       icon: Icons.looks_one,
     ),
     _StudyMenuItem(
       mode: StudyMode.study2,
-      title: '2マスで学ぶ\n量子コンピュータ',
+      title: l10n.studyMenuTwoCell,
       icon: Icons.looks_two,
     ),
     _StudyMenuItem(
       mode: StudyMode.study3,
-      title: '3マスで学ぶ\nグローバーのアルゴリズム',
+      title: l10n.studyMenuThreeCell,
       icon: Icons.auto_graph,
     ),
     _StudyMenuItem(
       mode: StudyMode.epilogue,
-      title: '終わりに',
+      title: l10n.studyMenuEpilogue,
       icon: Icons.menu_book,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final items = _buildItems(l10n);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'スタディモード',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.studyMenuTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -67,10 +70,10 @@ class StudyModeMenuScreen extends StatelessWidget {
         child: SafeArea(
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: _items.length,
+            itemCount: items.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final item = _items[index];
+              final item = items[index];
               return _StudyMenuCard(
                 item: item,
                 onTap: () async {
@@ -122,8 +125,8 @@ class StudyModeMenuScreen extends StatelessWidget {
                     return;
                   }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('画面遷移に失敗しました'),
+                    SnackBar(
+                      content: Text(l10n.studyNavigationFailed),
                     ),
                   );
                 },

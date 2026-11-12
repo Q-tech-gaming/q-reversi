@@ -21,6 +21,7 @@ class OperationOrderSettings {
 class OperationOrderPreferenceService {
   static const String _freeSelectionOrderKey = 'allow_free_selection_order';
   static const String _doubleTapApplyKey = 'double_tap_apply_gate';
+  static const String _gateEffectIconKey = 'show_gate_effect_icons';
 
   /// ゲートとマスを好きな順で選べるか（デフォルト: false = ゲート先行）
   Future<bool> isFreeSelectionOrderEnabled() async {
@@ -55,6 +56,25 @@ class OperationOrderPreferenceService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_doubleTapApplyKey, enabled);
+    } catch (_) {
+      // 保存失敗は致命的ではない
+    }
+  }
+
+  /// ゲートボタンの中に効果アイコンを出すか（デフォルト: true）
+  Future<bool> isGateEffectIconEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_gateEffectIconKey) ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> setGateEffectIconEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_gateEffectIconKey, enabled);
     } catch (_) {
       // 保存失敗は致命的ではない
     }

@@ -1,0 +1,609 @@
+{
+  "@@locale": "en",
+  "appTitle": "Q-Reversi",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appVersionLabel": "v{version}",
+  "@appVersionLabel": {
+    "description": "Version label shown on the home screen. {version} is the app version string.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "close": "Close",
+  "save": "Save",
+  "retry": "Retry",
+  "tryAgain": "Try again",
+  "@tryAgain": {
+    "description": "Button to replay a run on the Time Attack result screen"
+  },
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "next": "Next",
+  "previous": "Previous",
+  "done": "Done",
+  "exit": "Exit",
+  "back": "Back",
+  "continueAction": "Continue",
+  "deleteAction": "Delete",
+  "settings": "Settings",
+  "skip": "Skip",
+  "understood": "Got it",
+  "startOver": "Start over",
+  "later": "Later",
+  "loading": "Loading…",
+  "refresh": "Refresh",
+  "errorOccurred": "An error occurred",
+  "helpAndInfo": "Help & Info",
+  "pageCounter": "{current} / {total}",
+  "@pageCounter": {
+    "description": "Page indicator. {current} is the 1-based current page, {total} the number of pages.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "pieceWhite": "White",
+  "pieceBlack": "Black",
+  "whiteScoreLabel": "White: ",
+  "@whiteScoreLabel": {
+    "description": "Label before the white piece count (trailing space is intentional)"
+  },
+  "blackScoreLabel": "Black: ",
+  "@blackScoreLabel": {
+    "description": "Label before the black piece count (trailing space is intentional)"
+  },
+  "playerLabelPrefix": "Player: ",
+  "@playerLabelPrefix": {
+    "description": "Label before the current player's colour (trailing space is intentional)"
+  },
+  "playerLabel": "Player: {label}",
+  "@playerLabel": {
+    "description": "{label} is the player colour name",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "turnCounterOfMax": "Turn: {turn}/{maxTurns}",
+  "@turnCounterOfMax": {
+    "placeholders": {
+      "turn": {
+        "type": "int"
+      },
+      "maxTurns": {
+        "type": "int"
+      }
+    }
+  },
+  "turnsCount": "Turns: {n}",
+  "@turnsCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "goalLabel": "Goal: {goal}",
+  "@goalLabel": {
+    "description": "{goal} is the goal / victory condition text",
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "optimalTurnsLabel": "Best: {n} turns",
+  "@optimalTurnsLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "levelTitle": "Level {label}",
+  "@levelTitle": {
+    "description": "{label} is the level display label, e.g. 1-3",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "stageLabel": "Stage {n}",
+  "@stageLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cpuThinking": "CPU is thinking…",
+  "victoryAllWhite": "Turn every piece white",
+  "@victoryAllWhite": {
+    "description": "Victory condition: turn the whole board white"
+  },
+  "victoryAllBlack": "Turn every piece black",
+  "@victoryAllBlack": {
+    "description": "Victory condition: turn the whole board black"
+  },
+  "difficultyBeginner": "Beginner",
+  "difficultyIntermediate": "Intermediate",
+  "difficultyAdvanced": "Advanced",
+  "difficultyQuantumAi": "Quantum AI",
+  "homeStart": "START",
+  "modeTutorialTitle": "Tutorial",
+  "modeTutorialSubtitle": "How to play",
+  "modeChallengeTitle": "Challenge Mode",
+  "modeChallengeSubtitle": "Create target quantum states in puzzles",
+  "modeTimeAttackTitle": "Time Attack Mode",
+  "modeTimeAttackSubtitle": "Beat the clock and climb the leaderboard",
+  "modeVsTitle": "VS Mode",
+  "modeVsSubtitle": "Play against a friend or the CPU",
+  "modeFreeRunTitle": "Free Run Mode",
+  "modeFreeRunSubtitle": "Experiment freely with quantum gates",
+  "modeStudyTitle": "Study Mode",
+  "modeStudySubtitle": "Get a feel for quantum computing",
+  "modeUnlockByChallengeStage0": "Clear Challenge Mode Stage 0 to unlock this mode",
+  "modeRequiresTutorial": "Finish or skip the tutorial first",
+  "resumeBattleTitle": "Continue match?",
+  "resumeBattleMessage": "Pick up where you left off?",
+  "vsSetupTitle": "VS Mode",
+  "vsCpuDifficultyHeading": "CPU Difficulty",
+  "vsDifficultyUnlockNote": "Win at each difficulty to unlock the next.",
+  "vsDifficultyColumn": "Difficulty",
+  "vsRecordColumn": "Record",
+  "vsLegendLoss": "L",
+  "@vsLegendLoss": {
+    "description": "Legend chip for losses in the record bar"
+  },
+  "vsLegendDraw": "D",
+  "@vsLegendDraw": {
+    "description": "Legend chip for draws in the record bar"
+  },
+  "vsLegendWin": "W",
+  "@vsLegendWin": {
+    "description": "Legend chip for wins in the record bar"
+  },
+  "vsRecordSummary": "{wins}W / {played} played",
+  "@vsRecordSummary": {
+    "description": "{wins} wins out of {played} games played",
+    "placeholders": {
+      "wins": {
+        "type": "int"
+      },
+      "played": {
+        "type": "int"
+      }
+    }
+  },
+  "vsQuantumAiDescription": "An AI trained with quantum machine learning",
+  "vsBattleModeHeading": "Match type",
+  "vsModeVsCpu": "vs CPU",
+  "vsModeVsHuman": "vs Human",
+  "vsVsHumanLocked": "Play one vs CPU match to unlock",
+  "vsTurnsHeading": "Turns",
+  "vsTurnsLockedNote": "Starts locked at 20 turns. Play one vs CPU match to unlock other options.",
+  "vsTurnsOption": "{turns} turns",
+  "@vsTurnsOption": {
+    "placeholders": {
+      "turns": {
+        "type": "int"
+      }
+    }
+  },
+  "vsStartGame": "Start",
+  "vsQuantumAiRanking": "VS Quantum AI RANKING",
+  "challengeModeTitle": "Challenge Mode",
+  "challengeNoLevels": "No levels available",
+  "challengeStageProgress": "{done} / {total} cleared",
+  "@challengeStageProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeStageProgressUnlock": "{done} / {total} cleared\nClear every stage to unlock more modes",
+  "@challengeStageProgressUnlock": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeGuideStep1": "1. Check the clear condition.\nTurn the whole board white or black to clear the level.",
+  "challengeGuideStep2": "2. Choose a gate",
+  "challengeGuideStep3": "3. Choose the pieces to affect.\nTap a cell on the board, or a button beside it.",
+  "challengeGuideStep4": "4. Tap Apply Gate to use it on those pieces",
+  "challengeGuideStep5": "5. You can review gate effects anytime with this info button",
+  "challengeAvailableGates": "Available gates",
+  "challengeLevelClearTitle": "🎉 Level cleared!",
+  "challengeLevelClearMessage": "Level {label} cleared!",
+  "@challengeLevelClearMessage": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "challengeTurnsUsed": "Turns used: {n}",
+  "@challengeTurnsUsed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "applyGate": "Apply Gate",
+  "reset": "Reset",
+  "measure": "Measure",
+  "gateEffectsTitle": "Gate Effects",
+  "gateEffectsTooltip": "Gate effects",
+  "gateEffectPage1": "Gate effects ①",
+  "gateEffectPage2": "Gate effects ②",
+  "gateEffectNonCnot": "Gate effects (non-CNOT)",
+  "gateEffectCnotWhitePlayer": "CNOT [White player]",
+  "gateEffectCnotBlackPlayer": "CNOT [Black player]",
+  "hintSelectGateOrBoard": "Choose a gate or a target on the board",
+  "hintSelectGateFirst": "Choose a gate first",
+  "hintSelectFirstCell": "Choose the first cell",
+  "hintSelectSecondCell": "Choose the second cell",
+  "hintTwoCellsSelected": "2 cells selected",
+  "hintSelectRowColumnOrCell": "Choose a row/column button or a cell",
+  "errorEntangledNotSelectable": "You can't select entangled pieces",
+  "errorAdjacentOnly": "Choose adjacent pieces only",
+  "errorRegionContainsEntangled": "That area includes entangled pieces",
+  "errorRangeContainsEntangled": "That selection includes entangled pieces",
+  "errorGateApplyFailed": "Couldn't apply the gate",
+  "errorGateApplyFailedForbidden": "Couldn't apply the gate (forbidden area or entangled pieces)",
+  "errorForbiddenArea": "That area is forbidden. You can't reuse the area your opponent used last turn.",
+  "errorSelectXFirst": "Choose the X gate first.",
+  "errorSelectBestTarget": "Choose {label} — it gains you the most pieces",
+  "@errorSelectBestTarget": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSelectBestTargetThenApply": "Choose {label}, then apply",
+  "@errorSelectBestTargetThenApply": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "vsGuideRowLabel": "Row {n}",
+  "@vsGuideRowLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "vsGuideColumnLabel": "Column {n}",
+  "@vsGuideColumnLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "vsGuideFourCellsLabel": "the 4 cells near row {row}, column {col}",
+  "@vsGuideFourCellsLabel": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "col": {
+        "type": "int"
+      }
+    }
+  },
+  "vsGuideIntro": "In VS Mode, you take turns applying gates and try to finish with more pieces.",
+  "vsGuideSelectX": "First, choose the X gate",
+  "vsGuideSelectBoard": "You'll gain the most pieces at {label} (net +{netGain}: {blackFlips} black → white).\nTap the highlighted target",
+  "@vsGuideSelectBoard": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "netGain": {
+        "type": "int"
+      },
+      "blackFlips": {
+        "type": "int"
+      }
+    }
+  },
+  "vsGuideApply": "Tap Apply Gate",
+  "vsGuideForbidden": "Your opponent can't use the area you just played.\nIt stays forbidden on their turn.",
+  "vsGuideCooldown": "Your turn.\nThe X gate you just used is on cooldown.",
+  "vsGuideGateStrength": "A quick guide to gate strength.\nGates that flip more of your opponent's pieces to your colour are stronger.\nX / Y > H > CNOT > Z > SWAP",
+  "vsGuideInfo": "You can check each gate's effect anytime with this info button.",
+  "vsGuideMeasure": "You've reached 20 turns.\nTap Run Measurement to decide the winner.",
+  "vsQuitTitle": "Leave this match?",
+  "vsQuitMessage": "Your board will be saved.",
+  "undoMove": "Undo move",
+  "makeBoardAllWhite": "Turn the whole board white",
+  "makeBoardAllBlack": "Turn the whole board black",
+  "runMeasurement": "Run Measurement",
+  "measureConfirmTitle": "Ready to measure?",
+  "measureConfirmMessage": "Measure now and show the result?",
+  "resultDraw": "Draw",
+  "resultVictory": "Victory!",
+  "resultDefeat": "Defeat",
+  "resultWhiteWins": "White wins!",
+  "resultBlackWins": "Black wins!",
+  "resultBannerVictory": "VICTORY",
+  "resultBannerDefeat": "DEFEAT",
+  "resultBannerDraw": "DRAW",
+  "resultBannerWinner": "WINNER",
+  "matchResultBarrierLabel": "Match result",
+  "resultYouWhite": "You (White)",
+  "resultCpuBlack": "CPU (Black)",
+  "resultViewResult": "View result",
+  "resultGoToRanking": "View ranking",
+  "timeAttackModeTitle": "Time Attack Mode",
+  "timeAttackTitle": "Time Attack",
+  "timeAttackHeroTitle": "Time Attack\nChallenge",
+  "timeAttackIntro": "You start with 30 seconds.\nClearing puzzles adds more TIME.",
+  "timeAttackComboHint": "String PERFECTs together for a COMBO BONUS!",
+  "timeAttackNetworkRequired": "An internet connection is required for Time Attack.",
+  "timeAttackStart": "START",
+  "timeAttackRanking": "RANKING",
+  "timeAttackDebugPreview": "DEBUG PREVIEW",
+  "timeAttackDebugViewClear": "View CLEAR screen",
+  "timeAttackDebugViewAllClear": "View ALL CLEAR screen",
+  "timeAttackHudTime": "TIME",
+  "timeAttackHudClear": "CLEAR",
+  "timeAttackHudBestTurns": "Best",
+  "timeAttackHudTurns": "Turns",
+  "timeAttackHudCombo": "COMBO",
+  "timeAttackAllClear": "ALL CLEAR!",
+  "timeAttackPerfect": "PERFECT!",
+  "timeAttackClear": "CLEAR!",
+  "timeAttackComboCount": "{n} COMBO",
+  "@timeAttackComboCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "timeAttackBonusGained": "+{n} BONUS",
+  "@timeAttackBonusGained": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "timeAttackTimeBonus": "TIME +{sec}",
+  "@timeAttackTimeBonus": {
+    "description": "{sec} is the bonus in seconds as a pre-formatted string, e.g. 3.5",
+    "placeholders": {
+      "sec": {
+        "type": "String"
+      }
+    }
+  },
+  "timeAttackNextLabel": "NEXT",
+  "timeAttackQuitTitle": "Quit?",
+  "timeAttackQuitMessage": "Your current Time Attack run will be discarded.",
+  "timeAttackNewRecord": "NEW RECORD!",
+  "timeAttackTotalScore": "TOTAL SCORE",
+  "timeAttackClearBonus": "CLEAR BONUS",
+  "timeAttackBonusHeading": "BONUS",
+  "timeAttackMaxCombo": "MAX COMBO",
+  "timeAttackComboBonus": "COMBO BONUS",
+  "timeAttackTimeBonusLabel": "TIME BONUS",
+  "timeAttackSubmitFailed": "Couldn't submit your score",
+  "timeAttackNothingToResubmit": "Nothing left to resubmit",
+  "timeAttackResubmit": "Resubmit",
+  "timeAttackSubmitting": "Submitting…",
+  "timeAttackViewRanking": "View Ranking",
+  "timeAttackRankingInfoUnavailable": "Couldn't load ranking info",
+  "timeAttackRankCalcFailed": "Couldn't place this score on the ranking",
+  "rankingTitle": "Ranking",
+  "rankingLoadFailed": "Couldn't load the ranking",
+  "rankingYou": "YOU",
+  "rankingNoRecordYet": "No record yet",
+  "rankingNicknameColumn": "Nickname",
+  "rankingWinsColumn": "Wins",
+  "rankingTotalScoreLine": "TOTAL SCORE  {score}",
+  "@rankingTotalScoreLine": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "rankingClearCountLabel": "Clears",
+  "rankingMaxCombo": "MAX COMBO",
+  "rankingComboBonus": "COMBO BONUS",
+  "rankingTimeBonus": "TIME BONUS",
+  "rankingUpdatedAt": "Updated",
+  "nicknameChangeTitle": "Change name",
+  "nicknameHint": "Nickname",
+  "nicknameLengthError": "Enter {min}–{max} characters",
+  "@nicknameLengthError": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "nicknameTaken": "That name is already taken",
+  "nicknameBlocked": "That name includes a blocked word",
+  "nicknameSaveFailed": "Couldn't save",
+  "playerNameTooltip": "Player name",
+  "settingsFreeOrderTitle": "Pick gates and pieces in any order",
+  "settingsFreeOrderDescription": "When on, you can choose gates and pieces in any order.",
+  "settingsGateEffectIconTitle": "Show effects on gate buttons",
+  "settingsGateEffectIconDescription": "When on, each button shows how pieces change. When off, buttons show text only.",
+  "settingsDoubleTapTitle": "Double-tap to apply instantly",
+  "settingsDoubleTapDescription": "After choosing a gate, quickly tap the same piece twice to apply it right away. Tap the same row or column button again to apply it there without clearing your selection.",
+  "settingsVolumeHeading": "Volume",
+  "settingsVolumeBgm": "BGM",
+  "settingsVolumeSfx": "Sound effects",
+  "legalPrivacyPolicy": "Privacy Policy",
+  "legalSupport": "Support",
+  "legalPrivacyPolicyUrl": "https://q-tech-gaming.github.io/q-reversi-privacy-policy/en/",
+  "@legalPrivacyPolicyUrl": {
+    "description": "URL opened by the Privacy Policy item (not user-visible text)"
+  },
+  "legalSupportUrl": "https://q-tech-gaming.github.io/support/en/",
+  "@legalSupportUrl": {
+    "description": "URL opened by the Support item (not user-visible text)"
+  },
+  "legalDeleteRankingData": "Delete ranking data",
+  "legalDeleteRankingDataSubtitle": "Name, scores, wins, and more",
+  "legalCouldNotOpenPage": "Couldn't open the page",
+  "legalDeleteDialogTitle": "Delete ranking data",
+  "legalDeleteDialogBody": "This deletes ranking data from the server and this device — including Time Attack records, VS Quantum AI wins, and your player name.\n\nChallenge progress and control settings stay. This can't be undone.",
+  "legalDeleteConfirmTitle": "Delete for real?",
+  "legalDeleteConfirmBody": "Cloud data and related data on this device will both be deleted.",
+  "legalDeleting": "Deleting…",
+  "legalDeleteFailed": "Couldn't delete ranking data",
+  "legalDeleteDoneTitle": "Deleted",
+  "legalDeleteFailedTitle": "Couldn't delete",
+  "legalDeleteDoneMessage": "Your ranking data has been deleted.",
+  "tutorialTitle": "Tutorial",
+  "tutorialComplete": "Tutorial complete!",
+  "tutorialReturnToModeSelect": "Heading back to mode select.",
+  "tutorialStartOperating": "Try it",
+  "tutorialSelectGateButton": "Choose a gate button.",
+  "tutorialIntroConcept": "Q-Reversi mixes quantum computing with Reversi.",
+  "tutorialIntroHowTo": "Let's learn the controls.\nTap the highlighted spot.",
+  "tutorialGoalLabel": "Goal: {goal}",
+  "@tutorialGoalLabel": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "tutorialStatusSelectFirstCell": "Choose the first cell",
+  "tutorialStatusSelectSecondCell": "Choose the second cell",
+  "tutorialStatusTwoCellsSelected": "2 cells selected",
+  "tutorialStatusSelectRowColumnOrCell": "Choose a row/column button or a cell",
+  "tutorialTopicControls": "Learn the controls",
+  "tutorialTopicHGate": "Learn the H gate",
+  "tutorialTopicYGate": "Learn the Y gate",
+  "tutorialTopicZGate": "Learn the Z gate",
+  "tutorialTopicSwapGate": "Learn the SWAP gate",
+  "tutorialTopicCnotGate": "Learn the CNOT gate",
+  "tutorialHintSelectWholeRow": "You can also select a whole row at once.",
+  "tutorialHintCnotBlackControl": "If the first piece is black, the second piece changes.",
+  "tutorialUnderstood": "Got it",
+  "pieceGrayPlus": "Gray plus",
+  "pieceGrayMinus": "Gray minus",
+  "tutorialImageNotFound": "Image not found",
+  "tutorialImageLoadError": "Couldn't load image\n{path}\n\nError: {error}",
+  "@tutorialImageLoadError": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "tutorialVideoPathMissing": "No video path specified",
+  "tutorialVideoLoadError": "Couldn't load video\n{path}\n\nError: {error}",
+  "@tutorialVideoLoadError": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "tutorialDiagramLabel": "Diagram",
+  "tutorialAnimationLabel": "Animation",
+  "tutorialEntangledState": "Entangled",
+  "tutorialCnotPatternNormal": "Standard pattern",
+  "tutorialCnotPatternVsWhite": "VS Mode · White player",
+  "tutorialPatternListPending": "Pattern list (coming soon)",
+  "tutorialEntanglementResultWhite": "Measured: White + White (entangled)",
+  "tutorialEntanglementResultBlack": "Measured: Black + Black (entangled)",
+  "tutorialCnotGrayControlNote": "Gray control bit: 50/50 white or black",
+  "tutorialClassicalComputer": "Classical computer",
+  "tutorialQuantumComputer": "Quantum computer",
+  "tutorialQReversi": "Q-Reversi",
+  "tutorialDemoSelectGate": "Choose a gate",
+  "tutorialDemoSelectColumn": "Choose a column",
+  "tutorialDemoSelectRow": "Choose a row",
+  "tutorialDemoSelectFourCells": "Choose 4 cells",
+  "studyMenuTitle": "Study Mode",
+  "studyMenuIntro": "What is a quantum computer?",
+  "studyMenuOneCell": "Quantum Computing\nin 1 Cell",
+  "studyMenuTwoCell": "Quantum Computing\nin 2 Cells",
+  "studyMenuThreeCell": "Grover's Algorithm\nin 3 Cells",
+  "studyMenuEpilogue": "Epilogue",
+  "studyNavigationFailed": "Couldn't open that screen",
+  "studyOneCellTitle": "1 Cell",
+  "studyTwoCellTitle": "2 Cells",
+  "studyThreeCellTitle": "3 Cells",
+  "studyTabBlochSphere": "Bloch Sphere",
+  "studyTabAmplitude": "Probability Amplitude",
+  "studyTextButton": "Text",
+  "studyCurrentState": "Current state: {state}",
+  "@studyCurrentState": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "studyStateWhite": "White piece |0⟩",
+  "studyStateBlack": "Black piece |1⟩",
+  "studyStateGrayPlus": "Gray plus |+⟩",
+  "studyStateGrayMinus": "Gray minus |-⟩",
+  "studyStateUnsupported": "N/A",
+  "studyAmplitudeChartTitle": "Probability amplitude (-1 to 1)",
+  "studyProbabilityChartTitle": "Probability (0 to 1)",
+  "studyApplying": "Applying…",
+  "studyTwoCellHintSelectGate": "Choose a gate, then pick where to apply it",
+  "studyTwoCellHintTwoBit": "Tap two adjacent cells in order (control first, then target)",
+  "studyTwoCellHintOneBit": "Tap a cell, or a side row button to select the whole row",
+  "studyGroverWrongStep": "Wrong step. Tap Reset to start over.",
+  "studyGroverStepBroken": "That broke the sequence. Tap Reset to start over.",
+  "studyGroverCircuitConsumed": "All circuit steps are used. Measure to lock in the state.",
+  "studyGroverCircuitDone": "Circuit complete. Tap Measure to lock in the state.",
+  "studyGroverChooseGate": "Choose H, CCZ, or Diff.",
+  "studyGroverPressApply": "Tap Apply Gate.",
+  "studyGroverMeasureResult": "Measured: {result}",
+  "@studyGroverMeasureResult": {
+    "placeholders": {
+      "result": {
+        "type": "String"
+      }
+    }
+  }
+}

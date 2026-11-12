@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'tutorial_operation_demo_animation.dart';
 import 'tutorial_measurement_animation.dart';
 import 'tutorial_swap_animation.dart';
@@ -45,10 +46,10 @@ class TutorialAnimationWidget extends StatelessWidget {
               color: Colors.white.withOpacity(0.2),
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              'アニメーション',
-              style: TextStyle(color: Colors.white70),
+              AppLocalizations.of(context).tutorialAnimationLabel,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
         );

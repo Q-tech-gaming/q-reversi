@@ -5,6 +5,7 @@ import '../../data/time_attack/time_attack_leaderboard_repository.dart';
 import '../../domain/services/time_attack_local_profile_service.dart';
 import '../../domain/time_attack/time_attack_leaderboard_entry.dart';
 import '../../core/sound_effects.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/sound_back_button.dart';
 import '../widgets/time_attack_nickname_dialog.dart';
 import '../widgets/time_attack_rank_style.dart';
@@ -133,8 +134,8 @@ class _TimeAttackLeaderboardScreenState
                 .where((e) => !e.isMe)
                 .map((e) => e.nickname) ??
             const [],
-        title: 'プレイヤー名を変更',
-        confirmLabel: '保存',
+        title: AppLocalizations.of(context).nicknameChangeTitle,
+        confirmLabel: AppLocalizations.of(context).save,
       );
       if (ok && mounted) {
         await _load();
@@ -219,9 +220,9 @@ class _TimeAttackLeaderboardScreenState
                           color: const Color(0xFF6B46C1).withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'YOU',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context).rankingYou,
+                          style: const TextStyle(
                             color: Color(0xFFB794F4),
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -232,7 +233,8 @@ class _TimeAttackLeaderboardScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'TOTAL SCORE  ${entry.totalScore}',
+                  AppLocalizations.of(context)
+                      .rankingTotalScoreLine(entry.totalScore),
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 15,
@@ -241,12 +243,12 @@ class _TimeAttackLeaderboardScreenState
                 ),
                 const SizedBox(height: 16),
                 const Divider(color: Colors.white24),
-                _detailRow('CLEAR数', '${entry.clearCount}'),
-                _detailRow('MAX COMBO', '×${entry.maxCombo}'),
-                _detailRow('COMBO BONUS', '+${entry.comboBonus}'),
+                _detailRow(AppLocalizations.of(context).rankingClearCountLabel, '${entry.clearCount}'),
+                _detailRow(AppLocalizations.of(context).rankingMaxCombo, '×${entry.maxCombo}'),
+                _detailRow(AppLocalizations.of(context).rankingComboBonus, '+${entry.comboBonus}'),
                 if (entry.timeBonusPoints > 0)
-                  _detailRow('TIME BONUS', '+${entry.timeBonusPoints}'),
-                _detailRow('更新日時', dateText),
+                  _detailRow(AppLocalizations.of(context).rankingTimeBonus, '+${entry.timeBonusPoints}'),
+                _detailRow(AppLocalizations.of(context).rankingUpdatedAt, dateText),
                 const SizedBox(height: 8),
               ],
             ),
@@ -278,15 +280,17 @@ class _TimeAttackLeaderboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ランキング', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.rankingTitle,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
         leading: const SoundBackButton(),
         actions: [
           IconButton(
-            tooltip: 'プレイヤー名',
+            tooltip: l10n.playerNameTooltip,
             onPressed: (_loading || _editingName)
                 ? null
                 : () {
@@ -296,7 +300,7 @@ class _TimeAttackLeaderboardScreenState
             icon: const Icon(Icons.badge_outlined),
           ),
           IconButton(
-            tooltip: '更新',
+            tooltip: l10n.refresh,
             onPressed: _loading
                 ? null
                 : () {
@@ -324,6 +328,7 @@ class _TimeAttackLeaderboardScreenState
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -334,10 +339,10 @@ class _TimeAttackLeaderboardScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'ランキングを読み込めませんでした',
+              Text(
+                l10n.rankingLoadFailed,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.redAccent),
+                style: const TextStyle(color: Colors.redAccent),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -345,7 +350,7 @@ class _TimeAttackLeaderboardScreenState
                   SoundEffects.instance.click();
                   _load();
                 },
-                child: const Text('再試行'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -362,11 +367,11 @@ class _TimeAttackLeaderboardScreenState
 
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 56,
                 child: Text(
                   '#',
@@ -375,13 +380,14 @@ class _TimeAttackLeaderboardScreenState
               ),
               Expanded(
                 child: Text(
-                  'ニックネーム',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                  l10n.rankingNicknameColumn,
+                  style:
+                      const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ),
               Text(
-                'TOTAL SCORE',
-                style: TextStyle(color: Colors.white38, fontSize: 12),
+                l10n.timeAttackTotalScore,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
           ),
@@ -427,6 +433,7 @@ class _TimeAttackLeaderboardScreenState
     required TimeAttackLeaderboardEntry? myEntry,
     required int? myRank,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -443,12 +450,12 @@ class _TimeAttackLeaderboardScreenState
           ),
         ),
         if (myEntry == null)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
-              'あなたの記録はまだありません',
+              l10n.rankingNoRecordYet,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
           )
         else

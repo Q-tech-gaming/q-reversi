@@ -4,6 +4,7 @@ import '../../core/sound_effects.dart';
 import '../../domain/entities/challenge_level.dart';
 import '../../domain/entities/challenge_progress.dart';
 import '../../domain/services/challenge_level_loader.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/challenge_progress_notifier.dart';
 import '../widgets/sound_back_button.dart';
 import 'challenge_flow_scope.dart';
@@ -75,9 +76,9 @@ class _ChallengeLevelSelectionScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'チャレンジモード',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          AppLocalizations.of(context).challengeModeTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -118,9 +119,9 @@ class _ChallengeLevelSelectionScreenState
         children: [
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          const Text(
-            'エラーが発生しました',
-            style: TextStyle(color: Colors.white, fontSize: 18),
+          Text(
+            AppLocalizations.of(context).errorOccurred,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
           ),
           const SizedBox(height: 8),
           Text(
@@ -134,7 +135,7 @@ class _ChallengeLevelSelectionScreenState
               SoundEffects.instance.click();
               _loadData();
             },
-            child: const Text('再試行'),
+            child: Text(AppLocalizations.of(context).retry),
           ),
         ],
       ),
@@ -143,10 +144,10 @@ class _ChallengeLevelSelectionScreenState
 
   Widget _buildContent(ChallengeProgressManager progressManager) {
     if (_levels.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'レベルが見つかりません',
-          style: TextStyle(color: Colors.white),
+          AppLocalizations.of(context).challengeNoLevels,
+          style: const TextStyle(color: Colors.white),
         ),
       );
     }
@@ -210,7 +211,7 @@ class _ChallengeLevelSelectionScreenState
         title: Row(
           children: [
             Text(
-              stageNumber == 0 ? 'ステージ 0' : 'ステージ $stageNumber',
+              AppLocalizations.of(context).stageLabel(stageNumber),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -227,8 +228,10 @@ class _ChallengeLevelSelectionScreenState
           stageNumber == 0 &&
                   completedCount < levels.length &&
                   !progressManager.isStage0RequirementMet()
-              ? '$completedCount / ${levels.length} クリア\n全クリアで他モード開放'
-              : '$completedCount / ${levels.length} クリア',
+              ? AppLocalizations.of(context).challengeStageProgressUnlock(
+                  completedCount, levels.length)
+              : AppLocalizations.of(context)
+                  .challengeStageProgress(completedCount, levels.length),
           style: const TextStyle(color: Colors.white70),
         ),
         leading: Icon(

@@ -9,8 +9,12 @@ import '../../domain/entities/gate_type.dart';
 import '../../domain/entities/piece.dart';
 import '../../domain/entities/piece_type.dart';
 import '../../domain/entities/position.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/content/study_content.dart';
 import '../widgets/board_widget.dart';
+import '../gate_effect_icon_setting.dart';
 import '../widgets/gate_button.dart';
+import '../widgets/gate_button_grid.dart';
 import '../widgets/sound_back_button.dart';
 import '../widgets/study/study_quantum_graph_widgets.dart';
 import '../widgets/study/study_text_tutorial_overlay.dart';
@@ -139,25 +143,35 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
   final GlobalKey _lowerPlayAreaKey = GlobalKey();
   int? _tutorialStepIndex;
 
-  final List<StudyTextTutorialStep> _tutorialSteps = const [
-    StudyTextTutorialStep(
-      title: '2マスで学ぶ量子コンピュータ',
-      message: 'このページでは、2量子ビットの状態を確率振幅と存在確率で体験します。',
-    ),
-    StudyTextTutorialStep(
-      title: '2量子ビットの表現',
-      message:
-          '1量子ビットのときは、|0⟩状態か|1⟩状態かの2択でした。2ビットになると、1番目が|0⟩と|1⟩、2番目が|0⟩と|1⟩でそれぞれ2通りずつあるため、掛け合わせて全部で4パターンの状態ができます。\n「|00⟩」のように | ⟩ の中に2つ数字が入る表記では、左が1ビット目、右が2ビット目を表します。',
-    ),
-    StudyTextTutorialStep(
-      title: '試してみよう',
-      message:
-          'この2マスの盤面を用いて、ゲートを適用して重ね合わせの状態を作ってみたり、エンタングルをしてみたりして2ビットの状態の変化を体験してみてください',
-      nextLabel: '完了',
-    ),
-  ];
+  late List<StudyTextTutorialStep> _tutorialSteps;
+
+  /// ステップ数・順序・ボタンラベルはロケールに依存しない。文言のみ [StudyContent] から取得する。
+  List<StudyTextTutorialStep> _buildTutorialSteps(
+    StudyContent content,
+    AppLocalizations l10n,
+  ) {
+    final t = content.twoCellSteps;
+    return [
+      StudyTextTutorialStep(title: t[0].title, message: t[0].message),
+      StudyTextTutorialStep(title: t[1].title, message: t[1].message),
+      StudyTextTutorialStep(
+        title: t[2].title,
+        message: t[2].message,
+        nextLabel: l10n.done,
+      ),
+    ];
+  }
 
   late final BgmHandle _bgm;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tutorialSteps = _buildTutorialSteps(
+      StudyContent.ofContext(context),
+      AppLocalizations.of(context),
+    );
+  }
 
   @override
   void initState() {
@@ -256,7 +270,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
             _selectedPositions.add(position);
           } else {
             _selectedPositions = [position];
-            _entangledErrorMessage = '隣接した駒のみ選択できます';
+            _entangledErrorMessage = AppLocalizations.of(context).errorAdjacentOnly;
           }
         } else if (_selectedPositions.length == 2) {
           _selectedPositions = [position];
@@ -530,19 +544,20 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
     });
   }
 
-  String _gateHintText() {
+  String _gateHintText(AppLocalizations l10n) {
     final gate = _selectedGate;
     if (gate == null) {
-      return 'ゲートを選択し、盤面で適用先を選びます';
+      return l10n.studyTwoCellHintSelectGate;
     }
     if (gate.isTwoBitGate) {
-      return '隣接する2マスを順にタップ（1つ目が制御、2つ目がターゲット）';
+      return l10n.studyTwoCellHintTwoBit;
     }
-    return 'マスをタップ（1マス）または左右の行ボタン（1行まとめて）で対象を選びます';
+    return l10n.studyTwoCellHintOneBit;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final probs = _probabilities;
     final gaugeAmp = globalPhaseGaugeFirstPositive(_amplitudes);
     final amps = gaugeAmp.map((z) => z.re).toList();
@@ -552,9 +567,9 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
         _tutorialStepIndex == null ? null : _tutorialSteps[_tutorialStepIndex!];
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '2マスで学ぶ',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.studyTwoCellTitle,
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -584,7 +599,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                         children: [
                           Expanded(
                             child: StudyQuantumGraphCard(
-                              title: '確率振幅（-1 ～ 1）',
+                              title: l10n.studyAmplitudeChartTitle,
                               child: StudyQuantumStateBarChart(
                                 values: amps,
                                 labels: _basisLabels,
@@ -599,7 +614,7 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                           const SizedBox(height: 10),
                           Expanded(
                             child: StudyQuantumGraphCard(
-                              title: '存在確率（0 ～ 1）',
+                              title: l10n.studyProbabilityChartTitle,
                               child: StudyQuantumStateBarChart(
                                 values: probs,
                                 labels: _basisLabels,
@@ -653,12 +668,12 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                                           vertical: 8,
                                         ),
                                       ),
-                                      child: const Text('テキスト'),
+                                      child: Text(l10n.studyTextButton),
                                     ),
                                   ],
                                 ),
                                 Text(
-                                  _gateHintText(),
+                                  _gateHintText(l10n),
                                   style: const TextStyle(
                                     color: Color(0xFFDDE4FF),
                                     fontSize: 12,
@@ -699,46 +714,36 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    GateType.x,
-                                    GateType.h,
-                                    GateType.y,
-                                    GateType.z
-                                  ].map((gate) {
-                                    return SizedBox(
-                                      width: 74,
-                                      child: GateButton(
+                                ValueListenableBuilder<bool>(
+                                  valueListenable:
+                                      GateEffectIconSetting.instance.notifier,
+                                  builder: (context, showIcons, _) {
+                                    const oneBit = [
+                                      GateType.x,
+                                      GateType.h,
+                                      GateType.y,
+                                      GateType.z,
+                                    ];
+                                    const twoBit = [GateType.cnot, GateType.swap];
+                                    final rows = showIcons
+                                        ? [
+                                            ...chunkGateRows(oneBit, 2),
+                                            twoBit,
+                                          ]
+                                        : [oneBit, twoBit];
+                                    return GateButtonGrid(
+                                      rows: rows,
+                                      showEffectIcon: showIcons,
+                                      itemBuilder: (gate) => GateButton(
                                         gate: gate,
                                         isEnabled: true,
                                         isSelected: _selectedGate == gate,
                                         centerTwoBitLabel: true,
+                                        showEffectIcon: showIcons,
                                         onTap: () => _handleGateSelection(gate),
                                       ),
                                     );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [GateType.cnot, GateType.swap]
-                                      .map((gate) {
-                                    return SizedBox(
-                                      width: 86,
-                                      child: GateButton(
-                                        gate: gate,
-                                        isEnabled: true,
-                                        isSelected: _selectedGate == gate,
-                                        centerTwoBitLabel: true,
-                                        onTap: () => _handleGateSelection(gate),
-                                      ),
-                                    );
-                                  }).toList(),
+                                  },
                                 ),
                                 const SizedBox(height: 12),
                                 Wrap(
@@ -759,9 +764,9 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                                             : const Color(0xFF4CAF50),
                                         foregroundColor: Colors.white,
                                       ),
-                                      child: const Text(
-                                        'ゲートを適用',
-                                        style: TextStyle(
+                                      child: Text(
+                                        l10n.applyGate,
+                                        style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -778,9 +783,9 @@ class _StudyTwoCellQuantumScreenState extends State<StudyTwoCellQuantumScreen> {
                                             const Color(0xFF607D8B),
                                         foregroundColor: Colors.white,
                                       ),
-                                      child: const Text(
-                                        'リセット',
-                                        style: TextStyle(
+                                      child: Text(
+                                        l10n.reset,
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),

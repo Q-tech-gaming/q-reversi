@@ -10,6 +10,7 @@ import '../../domain/services/time_attack_local_profile_service.dart';
 import '../../domain/time_attack/time_attack_leaderboard_entry.dart';
 import '../../domain/time_attack/time_attack_run_api_models.dart';
 import '../../domain/time_attack/time_attack_run_state.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/time_attack_nickname_dialog.dart';
 import '../widgets/time_attack_rank_style.dart';
 import 'time_attack_game_screen.dart';
@@ -116,9 +117,8 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       } catch (e) {
         await _pendingStore.save(runId: widget.runId!, levelResults: payload);
         submitFailed = true;
-        submitError = e is TimeAttackRunRemoteException
-            ? e.message
-            : 'ランキング送信に失敗しました';
+        // null の場合は build 側でローカライズ済みの既定文言を表示する
+        submitError = e is TimeAttackRunRemoteException ? e.message : null;
       }
     }
 
@@ -158,7 +158,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _submitError = '再送信できるデータがありません';
+        _submitError = AppLocalizations.of(context).timeAttackNothingToResubmit;
       });
       return;
     }
@@ -187,9 +187,8 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       setState(() {
         _submitting = false;
         _submitFailed = true;
-        _submitError = e is TimeAttackRunRemoteException
-            ? e.message
-            : 'ランキング送信に失敗しました';
+        // null の場合は build 側でローカライズ済みの既定文言を表示する
+        _submitError = e is TimeAttackRunRemoteException ? e.message : null;
       });
     }
   }
@@ -301,7 +300,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
         _retrying = false;
         _retryError = e is TimeAttackRunRemoteException
             ? e.message
-            : 'TIME ATTACKの開始には通信が必要です。';
+            : AppLocalizations.of(context).timeAttackNetworkRequired;
       });
     }
   }
@@ -349,9 +348,11 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('タイムアタック', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.timeAttackTitle,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
@@ -388,7 +389,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                         if (!_processing && _submitFailed) ...[
                           const SizedBox(height: 8),
                           Text(
-                            _submitError ?? 'ランキング送信に失敗しました',
+                            _submitError ?? l10n.timeAttackSubmitFailed,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.redAccent,
@@ -397,7 +398,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                           ),
                           TextButton(
                             onPressed: _submitting ? null : _retrySubmit,
-                            child: Text(_submitting ? '送信中…' : '再送信'),
+                            child: Text(_submitting
+                                ? l10n.timeAttackSubmitting
+                                : l10n.timeAttackResubmit),
                           ),
                         ],
                         const SizedBox(height: 12),
@@ -422,7 +425,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                         )
                       : const Icon(Icons.emoji_events, size: 18),
                   label: Text(
-                    _openingRanking ? '読み込み中…' : 'ランキングを見る',
+                    _openingRanking ? l10n.loading : l10n.timeAttackViewRanking,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -458,9 +461,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                           side: const BorderSide(color: Colors.white38),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: const Text(
-                          '戻る',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.back,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -486,9 +489,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                'リトライ',
-                                style: TextStyle(
+                            : Text(
+                                l10n.tryAgain,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -507,20 +510,20 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
 
   Widget _buildClearTitle() {
     if (_isAllClear) {
-      return const Text(
-        'ALL CLEAR!',
+      return Text(
+        AppLocalizations.of(context).timeAttackAllClear,
         textAlign: TextAlign.center,
-        style: TextStyle(
+        style: const TextStyle(
           color: Color(0xFFFFD54F),
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
       );
     }
-    return const Text(
-      'CLEAR!',
+    return Text(
+      AppLocalizations.of(context).timeAttackClear,
       textAlign: TextAlign.center,
-      style: TextStyle(
+      style: const TextStyle(
         color: Color(0xFF80DEEA),
         fontSize: 32,
         fontWeight: FontWeight.bold,
@@ -533,10 +536,10 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       opacity: Tween<double>(begin: 0.25, end: 1).animate(
         CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
       ),
-      child: const Text(
-        'NEW RECORD!',
+      child: Text(
+        AppLocalizations.of(context).timeAttackNewRecord,
         textAlign: TextAlign.center,
-        style: TextStyle(
+        style: const TextStyle(
           color: Color(0xFFFFD54F),
           fontSize: 18,
           fontWeight: FontWeight.w900,
@@ -565,9 +568,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
       ),
       child: Column(
         children: [
-          const Text(
-            'TOTAL SCORE',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).timeAttackTotalScore,
+            style: const TextStyle(
               color: Color(0xFFB794F4),
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -590,6 +593,7 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
   }
 
   Widget _buildBonusBreakdown() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
@@ -601,9 +605,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
         children: [
           Row(
             children: [
-              const Text(
-                'CLEAR',
-                style: TextStyle(color: Colors.white60, fontSize: 14),
+              Text(
+                l10n.timeAttackHudClear,
+                style: const TextStyle(color: Colors.white60, fontSize: 14),
               ),
               const SizedBox(width: 8),
               Text(
@@ -615,9 +619,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
                 ),
               ),
               const Spacer(),
-              const Text(
-                'CLEAR BONUS',
-                style: TextStyle(color: Colors.white60, fontSize: 13),
+              Text(
+                l10n.timeAttackClearBonus,
+                style: const TextStyle(color: Colors.white60, fontSize: 13),
               ),
               const SizedBox(width: 8),
               Text(
@@ -631,9 +635,9 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'BONUS',
-            style: TextStyle(
+          Text(
+            l10n.timeAttackBonusHeading,
+            style: const TextStyle(
               color: Color(0xFFB794F4),
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -641,10 +645,10 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
             ),
           ),
           const SizedBox(height: 6),
-          _bonusRow('MAX COMBO', '×${runState.maxCombo}'),
-          _bonusRow('COMBO BONUS', '+${runState.comboBonus}'),
+          _bonusRow(l10n.timeAttackMaxCombo, '×${runState.maxCombo}'),
+          _bonusRow(l10n.timeAttackComboBonus, '+${runState.comboBonus}'),
           if (_isAllClear || runState.timeBonusPoints > 0)
-            _bonusRow('TIME BONUS', '+${runState.timeBonusPoints}'),
+            _bonusRow(l10n.timeAttackTimeBonusLabel, '+${runState.timeBonusPoints}'),
         ],
       ),
     );
@@ -690,8 +694,8 @@ class _TimeAttackResultScreenState extends State<TimeAttackResultScreen>
         ),
         child: Text(
           _nickname == null
-              ? 'ランキング情報を取得できませんでした'
-              : '今回のスコアで順位を計算できませんでした',
+              ? AppLocalizations.of(context).timeAttackRankingInfoUnavailable
+              : AppLocalizations.of(context).timeAttackRankCalcFailed,
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),

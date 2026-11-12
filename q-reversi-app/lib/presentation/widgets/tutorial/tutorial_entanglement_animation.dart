@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../piece_widget.dart';
 import '../../../domain/entities/piece.dart';
 import '../../../domain/entities/piece_type.dart';
@@ -159,8 +160,10 @@ class _TutorialEntanglementAnimationState
               const SizedBox(height: 16),
               Text(
                 _patternIndex == 0
-                    ? '測定結果: 白 + 白（エンタングル）'
-                    : '測定結果: 黒 + 黒（エンタングル）',
+                    ? AppLocalizations.of(context)
+                        .tutorialEntanglementResultWhite
+                    : AppLocalizations.of(context)
+                        .tutorialEntanglementResultBlack,
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,

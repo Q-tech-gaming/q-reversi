@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/tutorial_content.dart';
+import '../../l10n/app_localizations.dart';
 import '../../domain/entities/board.dart';
 import '../../domain/entities/position.dart';
 import '../../domain/entities/gate_type.dart';
@@ -8,6 +9,8 @@ import '../../domain/entities/piece_type.dart';
 import 'board_widget.dart';
 
 /// 操作説明のアニメーションデモ
+enum _DemoStep { none, selectGate, selectColumn, selectRow, selectFourCells, applyGate }
+
 class TutorialOperationDemo extends StatefulWidget {
   final TutorialAnimation animation;
 
@@ -29,7 +32,7 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
   List<Position> _selectedPositions = [];
   int? _selectedRow;
   int? _selectedColumn;
-  String _currentStep = '';
+  _DemoStep _currentStep = _DemoStep.none;
 
   @override
   void initState() {
@@ -109,7 +112,7 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
       _selectedPositions = [];
       _selectedRow = null;
       _selectedColumn = null;
-      _currentStep = 'ゲートを選択';
+      _currentStep = _DemoStep.selectGate;
     });
   }
 
@@ -121,7 +124,7 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
       _selectedColumn = 3; // 列3を選択
       _selectedRow = null;
       _selectedPositions = List.generate(8, (row) => Position(row, 3));
-      _currentStep = '列を選択';
+      _currentStep = _DemoStep.selectColumn;
     });
   }
 
@@ -133,7 +136,7 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
       _selectedRow = 4; // 行4を選択
       _selectedColumn = null;
       _selectedPositions = List.generate(8, (col) => Position(4, col));
-      _currentStep = '行を選択';
+      _currentStep = _DemoStep.selectRow;
     });
   }
 
@@ -151,14 +154,14 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
         const Position(3, 2),
         const Position(3, 3),
       ];
-      _currentStep = '4マスを選択';
+      _currentStep = _DemoStep.selectFourCells;
     });
   }
 
   void _showGateApplication() {
     setState(() {
       _selectedGate = GateType.x;
-      _currentStep = 'ゲートを適用';
+      _currentStep = _DemoStep.applyGate;
       // ゲート適用の視覚効果（元の盤面から選択位置の駒を反転）
       var newBoard = _originalBoard;
       for (final pos in _selectedPositions) {
@@ -175,6 +178,23 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
     });
   }
 
+  String _stepLabel(AppLocalizations l10n) {
+    switch (_currentStep) {
+      case _DemoStep.none:
+        return '';
+      case _DemoStep.selectGate:
+        return l10n.tutorialDemoSelectGate;
+      case _DemoStep.selectColumn:
+        return l10n.tutorialDemoSelectColumn;
+      case _DemoStep.selectRow:
+        return l10n.tutorialDemoSelectRow;
+      case _DemoStep.selectFourCells:
+        return l10n.tutorialDemoSelectFourCells;
+      case _DemoStep.applyGate:
+        return l10n.applyGate;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -187,7 +207,7 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            _currentStep,
+            _stepLabel(AppLocalizations.of(context)),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -231,11 +251,11 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              color: _currentStep == 'ゲートを適用'
+              color: _currentStep == _DemoStep.applyGate
                   ? const Color(0xFF4CAF50)
                   : const Color(0xFF4CAF50).withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
-              boxShadow: _currentStep == 'ゲートを適用'
+              boxShadow: _currentStep == _DemoStep.applyGate
                   ? [
                       BoxShadow(
                         color: const Color(0xFF4CAF50).withOpacity(0.5),
@@ -245,9 +265,9 @@ class _TutorialOperationDemoState extends State<TutorialOperationDemo>
                     ]
                   : null,
             ),
-            child: const Text(
-              'ゲートを適用',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).applyGate,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,

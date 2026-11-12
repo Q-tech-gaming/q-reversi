@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/sound_effects.dart';
 import '../../data/firebase/backend_warmup.dart';
+import '../../l10n/app_localizations.dart';
 import 'game_mode_selection_screen.dart';
 
 /// START 効果音（START_soft）の長さに合わせた遷移。
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? _versionLabel;
+  String? _appVersion;
   bool _opening = false;
 
   @override
@@ -29,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
     setState(() {
-      _versionLabel = 'v${info.version}';
+      _appVersion = info.version;
     });
   }
 
@@ -71,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHome() {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E27),
       body: IgnorePointer(
@@ -91,19 +93,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       top: constraints.maxHeight * 0.25,
                       left: 0,
                       right: 0,
-                      child: const Column(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Qリバーシ',
-                            style: TextStyle(
+                            l10n.appTitle,
+                            style: const TextStyle(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
+                          const SizedBox(height: 8),
+                          const Text(
                             'Quantum Computing Reversi',
                             style: TextStyle(
                               fontSize: 16,
@@ -130,9 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        child: const Text(
-                          'START',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.homeStart,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -140,13 +142,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    if (_versionLabel != null)
+                    if (_appVersion != null)
                       Positioned(
                         left: 0,
                         right: 0,
                         bottom: 16,
                         child: Text(
-                          _versionLabel!,
+                          l10n.appVersionLabel(_appVersion!),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.35),

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 class StudyTextTutorialStep {
   const StudyTextTutorialStep({
@@ -9,7 +10,7 @@ class StudyTextTutorialStep {
     this.additionalHighlightKeys = const [],
     this.bubbleBottomAnchorKey,
     this.showNextButton = true,
-    this.nextLabel = '次へ',
+    this.nextLabel,
     this.dimBackground = true,
     this.highlightExpandX = 0,
     this.highlightExpandY = 0,
@@ -21,7 +22,8 @@ class StudyTextTutorialStep {
   final List<GlobalKey> additionalHighlightKeys;
   final GlobalKey? bubbleBottomAnchorKey;
   final bool showNextButton;
-  final String nextLabel;
+  /// null の場合は [AppLocalizations.next]（ロケール別の「次へ」）を表示する。
+  final String? nextLabel;
   final bool dimBackground;
   final double highlightExpandX;
   final double highlightExpandY;
@@ -237,6 +239,7 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
   }
 
   Widget _buildBubble() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       key: _bubbleMeasureKey,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -272,9 +275,9 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
             children: [
               TextButton(
                 onPressed: widget.onClose,
-                child: const Text(
-                  '閉じる',
-                  style: TextStyle(color: Colors.white70),
+                child: Text(
+                  l10n.close,
+                  style: const TextStyle(color: Colors.white70),
                 ),
               ),
               if (widget.step.showNextButton)
@@ -284,7 +287,7 @@ class _StudyTextTutorialOverlayState extends State<StudyTextTutorialOverlay> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     child: Text(
-                      widget.step.nextLabel,
+                      widget.step.nextLabel ?? l10n.next,
                       style: const TextStyle(
                         color: Colors.lightBlueAccent,
                         fontWeight: FontWeight.bold,

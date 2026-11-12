@@ -3,8 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/firebase/ranking_data_deletion_service.dart';
 import '../../data/firebase/time_attack_run_remote_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 公開ドキュメント URL（GitHub Pages）
+///
+/// 表示言語ごとの URL は [AppLocalizations.legalPrivacyPolicyUrl] /
+/// [AppLocalizations.legalSupportUrl] を優先して使用する。
 abstract final class AppLegalLinks {
   static const privacyPolicy =
       'https://q-tech-gaming.github.io/q-reversi-privacy-policy/';
@@ -26,6 +30,7 @@ Future<void> showAppLegalInfoSheet(BuildContext context) {
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (context) {
+      final l10n = AppLocalizations.of(context);
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
@@ -41,9 +46,9 @@ Future<void> showAppLegalInfoSheet(BuildContext context) {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Text(
-                'ヘルプ・情報',
-                style: TextStyle(
+              Text(
+                l10n.helpAndInfo,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -53,42 +58,42 @@ Future<void> showAppLegalInfoSheet(BuildContext context) {
               ListTile(
                 leading: const Icon(Icons.privacy_tip_outlined,
                     color: Colors.white70),
-                title: const Text(
-                  'プライバシーポリシー',
-                  style: TextStyle(color: Colors.white),
+                title: Text(
+                  l10n.legalPrivacyPolicy,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 trailing: const Icon(Icons.open_in_new,
                     color: Colors.white38, size: 18),
                 onTap: () => _openLink(
                   context,
-                  AppLegalLinks.privacyPolicy,
+                  l10n.legalPrivacyPolicyUrl,
                 ),
               ),
               ListTile(
                 leading:
                     const Icon(Icons.support_agent, color: Colors.white70),
-                title: const Text(
-                  'サポート',
-                  style: TextStyle(color: Colors.white),
+                title: Text(
+                  l10n.legalSupport,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 trailing: const Icon(Icons.open_in_new,
                     color: Colors.white38, size: 18),
                 onTap: () => _openLink(
                   context,
-                  AppLegalLinks.support,
+                  l10n.legalSupportUrl,
                 ),
               ),
               const Divider(color: Colors.white12),
               ListTile(
                 leading: const Icon(Icons.delete_forever_outlined,
                     color: Colors.white38),
-                title: const Text(
-                  'ランキングデータの削除',
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                title: Text(
+                  l10n.legalDeleteRankingData,
+                  style: const TextStyle(color: Colors.white54, fontSize: 14),
                 ),
-                subtitle: const Text(
-                  '表示名・スコア・勝利数など',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                subtitle: Text(
+                  l10n.legalDeleteRankingDataSubtitle,
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -104,10 +109,11 @@ Future<void> showAppLegalInfoSheet(BuildContext context) {
 }
 
 Future<void> _openLink(BuildContext context, String url) async {
+  final l10n = AppLocalizations.of(context);
   final ok = await AppLegalLinks.open(url);
   if (!ok && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ページを開けませんでした')),
+      SnackBar(content: Text(l10n.legalCouldNotOpenPage)),
     );
   }
 }
@@ -117,27 +123,28 @@ Future<void> showRankingDataDeletionDialog(BuildContext context) async {
   final first = await showDialog<bool>(
     context: context,
     builder: (context) {
+      final l10n = AppLocalizations.of(context);
       return AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'ランキングデータを削除',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.legalDeleteDialogTitle,
+          style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'タイムアタックの記録、VS量子AIの勝利数、プレイヤー名など、ランキングに関わるデータがサーバーとこの端末から削除されます。\n\n'
-          'チャレンジの進行や操作設定は消えません。この操作は取り消せません。',
-          style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.45),
+        content: Text(
+          l10n.legalDeleteDialogBody,
+          style:
+              const TextStyle(color: Colors.white70, fontSize: 14, height: 1.45),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
-              '続ける',
-              style: TextStyle(color: Colors.redAccent),
+            child: Text(
+              l10n.continueAction,
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -149,26 +156,27 @@ Future<void> showRankingDataDeletionDialog(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) {
+      final l10n = AppLocalizations.of(context);
       return AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          '本当に削除しますか？',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          l10n.legalDeleteConfirmTitle,
+          style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'クラウドデータとともに、この端末の関連データも削除されます。',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+        content: Text(
+          l10n.legalDeleteConfirmBody,
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
-              '削除する',
-              style: TextStyle(color: Colors.redAccent),
+            child: Text(
+              l10n.deleteAction,
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -177,20 +185,22 @@ Future<void> showRankingDataDeletionDialog(BuildContext context) async {
   );
   if (confirmed != true || !context.mounted) return;
 
+  final l10n = AppLocalizations.of(context);
+
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (context) {
-      return const AlertDialog(
-        backgroundColor: Color(0xFF1A1F3A),
+      return AlertDialog(
+        backgroundColor: const Color(0xFF1A1F3A),
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
             Expanded(
               child: Text(
-                '削除しています…',
-                style: TextStyle(color: Colors.white70),
+                l10n.legalDeleting,
+                style: const TextStyle(color: Colors.white70),
               ),
             ),
           ],
@@ -205,7 +215,7 @@ Future<void> showRankingDataDeletionDialog(BuildContext context) async {
   } catch (e) {
     error = e is TimeAttackRunRemoteException
         ? e.message
-        : 'ランキングデータの削除に失敗しました';
+        : l10n.legalDeleteFailed;
   }
   if (!context.mounted) return;
   Navigator.of(context).pop();
@@ -217,17 +227,17 @@ Future<void> showRankingDataDeletionDialog(BuildContext context) async {
       return AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
         title: Text(
-          error == null ? '削除しました' : '削除できませんでした',
+          error == null ? l10n.legalDeleteDoneTitle : l10n.legalDeleteFailedTitle,
           style: const TextStyle(color: Colors.white),
         ),
         content: Text(
-          error ?? 'ランキングに関わるデータは削除されました。',
+          error ?? l10n.legalDeleteDoneMessage,
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(l10n.ok),
           ),
         ],
       );
