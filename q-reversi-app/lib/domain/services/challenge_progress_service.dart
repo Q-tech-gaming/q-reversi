@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../entities/challenge_progress.dart';
+import 'tutorial_progress_service.dart';
 
 /// チャレンジ進捗管理サービス
 class ChallengeProgressService {
@@ -17,7 +18,10 @@ class ChallengeProgressService {
       final progressJson = prefs.getString(_progressKey);
       
       if (progressJson == null) {
-        return ChallengeProgressManager({});
+        return ChallengeProgressManager(
+          {},
+          tutorialCompleted: await _isTutorialFinishedOrSkipped(),
+        );
       }
 
       final Map<String, dynamic> decoded = json.decode(progressJson);
@@ -35,10 +39,18 @@ class ChallengeProgressService {
         }
       });
 
-      return ChallengeProgressManager(progress);
+      return ChallengeProgressManager(
+        progress,
+        tutorialCompleted: await _isTutorialFinishedOrSkipped(),
+      );
     } catch (e) {
       return ChallengeProgressManager({});
     }
+  }
+
+  /// 最後まで終えた場合も、途中の×で抜けた場合も全開放する。
+  Future<bool> _isTutorialFinishedOrSkipped() {
+    return TutorialProgressService().isTutorialCompletedOrSkipped();
   }
 
   /// 進捗を保存

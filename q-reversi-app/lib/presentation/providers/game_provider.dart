@@ -122,7 +122,8 @@ class GameProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      await _processAITurn();
+      // 解説直後の相手手番は1ビットゲートに限る。2ビットは禁止領域が出ない。
+      await _processAITurn(oneBitOnly: true);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -167,12 +168,16 @@ class GameProvider extends ChangeNotifier {
   }
   
   /// AIのターンを処理
-  Future<void> _processAITurn() async {
+  Future<void> _processAITurn({bool oneBitOnly = false}) async {
     final currentPlayer = _gameState.getCurrentPlayer();
     if (currentPlayer == null || !currentPlayer.isAI) return;
     
     final difficulty = currentPlayer.aiDifficulty ?? AIDifficulty.beginner;
-    final action = await _aiService.think(_gameState, difficulty);
+    final action = await _aiService.think(
+      _gameState,
+      difficulty,
+      oneBitOnly: oneBitOnly,
+    );
     
     _gameState = _gameService.applyGateWithFullLogic(
       _gameState,

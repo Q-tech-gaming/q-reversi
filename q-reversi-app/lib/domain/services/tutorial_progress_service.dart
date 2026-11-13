@@ -5,6 +5,16 @@ class TutorialProgressService {
   static const String _tutorialCompletedKey = 'tutorial_completed';
   static const String _tutorialSkippedKey = 'tutorial_skipped';
 
+  /// チュートリアルを最後まで終えたか（スキップは含まない）
+  Future<bool> isTutorialCompleted() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_tutorialCompletedKey) ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// チュートリアルが完了またはスキップされているか確認
   Future<bool> isTutorialCompletedOrSkipped() async {
     try {

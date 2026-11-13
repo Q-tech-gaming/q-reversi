@@ -82,9 +82,13 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E27),
       appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context).studyMenuIntro,
-          style: const TextStyle(color: Colors.white),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            AppLocalizations.of(context).studyMenuIntro,
+            maxLines: 1,
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
         backgroundColor: const Color(0xFF1A1F3A),
         foregroundColor: Colors.white,
@@ -126,19 +130,23 @@ class _StudyQuantumIntroScreenState extends State<StudyQuantumIntroScreen> {
       height: kToolbarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
-              currentPage.pageTitle,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                currentPage.pageTitle,
+                maxLines: 1,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
+          const SizedBox(width: 12),
           Text(
             '${_currentPageIndex + 1}/${_pages.length}',
             style: const TextStyle(

@@ -294,21 +294,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get challengeGuideStep1 =>
-      '1. クリア条件を確認してください。\n盤面をすべて白にするか、黒にしたらレベルクリアです';
-
-  @override
-  String get challengeGuideStep2 => '2. ゲートを選択してください';
-
-  @override
-  String get challengeGuideStep3 =>
-      '3. 適用する駒を選択してください。\n盤面の中をタップか、盤面の外のボタンをタップしてください';
-
-  @override
-  String get challengeGuideStep4 => '4. \"ゲートを適用\"ボタンでゲートを駒に適用させて下さい';
-
-  @override
-  String get challengeGuideStep5 => '5. いつでもこのinfoボタンから、ゲートの効果を確認できます';
+  String get challengeGuideStep1 => '少ないターンでゴールの状態に導け！';
 
   @override
   String get challengeAvailableGates => '使用可能ゲート';
@@ -431,8 +417,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get vsGuideSelectX => 'まずは X ゲートを選んでください';
 
   @override
-  String vsGuideSelectBoard(String label, int netGain, int blackFlips) {
-    return '自分の駒が最も増えるのは $label です（差し引き +$netGain：黒$blackFlips→白）。\n白枠の場所を選んでください';
+  String vsGuideSelectBoard(String label) {
+    return '自分の駒が最も増えるのは $label です。\n白枠の場所を選んでください';
   }
 
   @override
@@ -788,22 +774,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tutorialTitle => 'チュートリアル';
 
   @override
-  String get tutorialComplete => 'チュートリアル完了';
+  String get tutorialComplete => 'チュートリアルクリア！';
 
   @override
   String get tutorialReturnToModeSelect => 'モード選択画面に戻ります。';
 
   @override
-  String get tutorialStartOperating => '操作する';
+  String get tutorialStartOperating => '試す';
 
   @override
   String get tutorialSelectGateButton => 'ゲートボタンを選んでください。';
 
   @override
-  String get tutorialIntroConcept => 'このゲームは、量子コンピュータとリバーシをかけ合わせたゲームです。';
+  String get tutorialIntroConcept => 'Qリバーシ チュートリアル';
 
   @override
-  String get tutorialIntroHowTo => 'まずは操作方法を学びましょう。\n光っているところをタップしてください。';
+  String get tutorialIntroHowTo => '光っているところをタップしてください。';
+
+  @override
+  String get tutorialClear => 'クリア！';
+
+  @override
+  String get tutorialGateChangesPieces => '下部のゲートボタンを駒に適用することで、駒が変化します。';
 
   @override
   String tutorialGoalLabel(String goal) {
@@ -842,6 +834,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get tutorialHintSelectWholeRow => '1列まとめて選ぶこともできます。';
+
+  @override
+  String get tutorialClearNotePiecesChange => 'ゲートを適用で、駒が変化します。';
+
+  @override
+  String get tutorialClearNoteEffects => 'ゲートによって効果が異なります。';
+
+  @override
+  String get tutorialClearNoteTwoPieces => '2つの駒を選ぶゲートもあります。';
 
   @override
   String get tutorialHintCnotBlackControl => '1駒目に黒を選ぶと、2駒目が変化します。';

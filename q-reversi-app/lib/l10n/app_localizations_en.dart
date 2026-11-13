@@ -299,32 +299,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengeGuideStep1 =>
-      '1. Check the clear condition.\nTurn the whole board white or black to clear the level.';
-
-  @override
-  String get challengeGuideStep2 => '2. Choose a gate';
-
-  @override
-  String get challengeGuideStep3 =>
-      '3. Choose the pieces to affect.\nTap a cell on the board, or a button beside it.';
-
-  @override
-  String get challengeGuideStep4 =>
-      '4. Tap Apply Gate to use it on those pieces';
-
-  @override
-  String get challengeGuideStep5 =>
-      '5. You can review gate effects anytime with this info button';
+      'Reach the goal in as few turns as you can!';
 
   @override
   String get challengeAvailableGates => 'Available gates';
 
   @override
-  String get challengeLevelClearTitle => '🎉 Level cleared!';
+  String get challengeLevelClearTitle => '🎉 LEVEL CLEARED';
 
   @override
   String challengeLevelClearMessage(String label) {
-    return 'Level $label cleared!';
+    return 'Level $label';
   }
 
   @override
@@ -443,8 +428,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vsGuideSelectX => 'First, choose the X gate';
 
   @override
-  String vsGuideSelectBoard(String label, int netGain, int blackFlips) {
-    return 'You\'ll gain the most pieces at $label (net +$netGain: $blackFlips black → white).\nTap the highlighted target';
+  String vsGuideSelectBoard(String label) {
+    return 'You\'ll gain the most pieces at $label.\nTap the highlighted target';
   }
 
   @override
@@ -495,19 +480,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get measureConfirmMessage => 'Measure now and show the result?';
 
   @override
-  String get resultDraw => 'Draw';
+  String get resultDraw => 'DRAW';
 
   @override
-  String get resultVictory => 'Victory!';
+  String get resultVictory => 'VICTORY';
 
   @override
-  String get resultDefeat => 'Defeat';
+  String get resultDefeat => 'DEFEAT';
 
   @override
-  String get resultWhiteWins => 'White wins!';
+  String get resultWhiteWins => 'WHITE WINS';
 
   @override
-  String get resultBlackWins => 'Black wins!';
+  String get resultBlackWins => 'BLACK WINS';
 
   @override
   String get resultBannerVictory => 'VICTORY';
@@ -822,12 +807,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tutorialSelectGateButton => 'Choose a gate button.';
 
   @override
-  String get tutorialIntroConcept =>
-      'Q-Reversi mixes quantum computing with Reversi.';
+  String get tutorialIntroConcept => 'Q-Reversi Tutorial';
 
   @override
-  String get tutorialIntroHowTo =>
-      'Let\'s learn the controls.\nTap the highlighted spot.';
+  String get tutorialIntroHowTo => 'Tap the highlighted spot.';
+
+  @override
+  String get tutorialClear => 'Clear!';
+
+  @override
+  String get tutorialGateChangesPieces =>
+      'Applying a gate button below changes the pieces.';
 
   @override
   String tutorialGoalLabel(String goal) {
@@ -867,7 +857,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tutorialHintSelectWholeRow =>
-      'You can also select a whole row at once.';
+      'You can also select a whole line at once.';
+
+  @override
+  String get tutorialClearNotePiecesChange =>
+      'Applying a gate changes the pieces.';
+
+  @override
+  String get tutorialClearNoteEffects => 'Each gate has a different effect.';
+
+  @override
+  String get tutorialClearNoteTwoPieces => 'Some gates choose two pieces.';
 
   @override
   String get tutorialHintCnotBlackControl =>

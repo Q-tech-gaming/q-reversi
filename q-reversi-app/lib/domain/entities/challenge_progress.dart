@@ -38,7 +38,13 @@ class ChallengeProgress extends Equatable {
 class ChallengeProgressManager {
   final Map<int, ChallengeProgress> _progress;
 
-  ChallengeProgressManager(this._progress);
+  /// チュートリアルを最後まで終えた、または途中の×で抜けたとき全ステージを開放する。
+  final bool tutorialCompleted;
+
+  ChallengeProgressManager(
+    this._progress, {
+    this.tutorialCompleted = false,
+  });
 
   /// レベルが完了しているか
   bool isLevelCompleted(int level) {
@@ -69,16 +75,19 @@ class ChallengeProgressManager {
     return false;
   }
 
-  /// ステージ0ゲートを満たしているか
-  /// 新規: ステージ0全クリア / 既存: ステージ1を1問以上クリア済みなら通過
+  /// ステージ0ゲートを満たしているか。
+  /// チュートリアル完了かスキップ、ステージ0全クリア、または既存のステージ1進捗で通過。
   bool isStage0RequirementMet() {
-    return isStage0Completed() || hasClearedAnyStage1Level();
+    return tutorialCompleted ||
+        isStage0Completed() ||
+        hasClearedAnyStage1Level();
   }
 
   /// レベルがアンロックされているか
   bool isLevelUnlocked(int level) {
     // デバッグモード（評価時）では全レベルをアンロック
     if (kDebugMode) return true;
+    if (tutorialCompleted) return true;
 
     // ステージ0は先頭から順に解放
     if (ChallengeLevel.isStage0Level(level)) {
@@ -96,6 +105,7 @@ class ChallengeProgressManager {
   bool isStageUnlocked(int stageNumber) {
     // デバッグモード（評価時）では全ステージをアンロック
     if (kDebugMode) return true;
+    if (tutorialCompleted) return true;
 
     if (stageNumber == 0) return true;
 
@@ -144,7 +154,10 @@ class ChallengeProgressManager {
   ChallengeProgressManager updateProgress(ChallengeProgress progress) {
     final newProgress = Map<int, ChallengeProgress>.from(_progress);
     newProgress[progress.level] = progress;
-    return ChallengeProgressManager(newProgress);
+    return ChallengeProgressManager(
+      newProgress,
+      tutorialCompleted: tutorialCompleted,
+    );
   }
 
   /// すべての進捗を取得

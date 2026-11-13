@@ -117,27 +117,40 @@ class AIService {
   final GameService _gameService = GameService();
 
   /// AIの思考
+  ///
+  /// [oneBitOnly] が true のとき、選べる1ビットゲートがある限り2ビットゲートは使わない。
+  /// 2ビットゲートは禁止領域を作らないため、VSチュートリアルの最初の相手手番で使う。
   Future<AIAction> think(
     GameState gameState,
-    AIDifficulty difficulty,
-  ) async {
+    AIDifficulty difficulty, {
+    bool oneBitOnly = false,
+  }) async {
     // 思考時間のシミュレーション
     await Future.delayed(Duration(milliseconds: 500 + _random.nextInt(1500)));
 
     final availableGates = _getAvailableGates(gameState);
-    if (availableGates.isEmpty) {
+    final oneBitGates =
+        availableGates.where((gate) => gate.isOneBitGate).toList();
+    final gates = oneBitOnly && oneBitGates.isNotEmpty
+        ? oneBitGates
+        : availableGates;
+    if (gates.isEmpty) {
       throw Exception('No available gates');
     }
 
     switch (difficulty) {
       case AIDifficulty.beginner:
-        return _thinkBeginner(gameState, availableGates);
+        return _thinkBeginner(gameState, gates);
       case AIDifficulty.intermediate:
-        return _thinkIntermediate(gameState, availableGates);
+        return _thinkIntermediate(gameState, gates);
       case AIDifficulty.advanced:
-        return _thinkAdvanced(gameState, availableGates);
+        return _thinkAdvanced(gameState, gates);
       case AIDifficulty.quantum:
-        return _thinkQuantum(gameState, availableGates);
+        return _thinkQuantum(
+          gameState,
+          gates,
+          oneBitOnly: oneBitOnly && oneBitGates.isNotEmpty,
+        );
     }
   }
 
@@ -280,14 +293,19 @@ class AIService {
   /// depth-2 and depth-4 tie-breaking (port of Python FourPlyMiniMaxQRV2).
   AIAction _thinkQuantum(
     GameState gameState,
-    List<GateType> availableGates,
-  ) {
+    List<GateType> availableGates, {
+    bool oneBitOnly = false,
+  }) {
     final currentPlayer = gameState.getCurrentPlayer();
     if (currentPlayer == null) return _thinkBeginner(gameState, availableGates);
     final myColor = currentPlayer.color;
 
     // Collect all (gate, positions) candidates for the AI at depth 1.
-    final allActions = _getAllActionsForState(gameState);
+    final actions = _getAllActionsForState(gameState);
+    final oneBitActions =
+        actions.where((action) => action.$1.isOneBitGate).toList();
+    final allActions =
+        oneBitOnly && oneBitActions.isNotEmpty ? oneBitActions : actions;
     if (allActions.isEmpty) return _thinkBeginner(gameState, availableGates);
 
     // Score depth-1 states by classical eval and cache the resulting states.

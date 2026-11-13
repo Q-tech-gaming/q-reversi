@@ -11,8 +11,11 @@ import '../../domain/services/gate_service.dart';
 /// 体験チュートリアルでユーザーが次に行う操作。
 enum TutorialInput { gate, cell, row, column, apply }
 
-/// 吹き出しに出す誘導文の種類（文言は AppLocalizations で解決する）。
-enum TutorialHint { selectWholeRow, cnotBlackControl }
+/// クリア後に出す短い解説。無いときは「クリア！」だけ。
+enum TutorialClearNote { piecesChange, selectLine, differentEffects, twoPieces }
+
+/// 操作前の補足。いまはCNOTの失敗後だけ使う。
+enum TutorialBrief { cnotBlackControl }
 
 /// 課題のタイトル種別（文言は AppLocalizations で解決する）。
 enum TutorialTopic { controls, hGate, yGate, zGate, swapGate, cnotGate }
@@ -27,16 +30,16 @@ class TutorialAction {
   /// 適用しても盤が変わらない手順（CNOTの効かない順）。
   final bool noChange;
 
-  /// 吹き出しに出す誘導文の種類（文言は AppLocalizations で解決する）。
-  final TutorialHint? hint;
-
   /// この手順だけ、操作の前に解説する。
   final bool explain;
 
+  /// 解説ポップアップの文。
+  final TutorialBrief? brief;
+
   const TutorialAction.gate(
     GateType this.gate, {
-    this.hint,
     this.explain = false,
+    this.brief,
   })  : input = TutorialInput.gate,
         row = 0,
         col = 0,
@@ -45,38 +48,38 @@ class TutorialAction {
   const TutorialAction.cell(
     this.row,
     this.col, {
-    this.hint,
     this.explain = false,
   })  : input = TutorialInput.cell,
         gate = null,
-        noChange = false;
+        noChange = false,
+        brief = null;
 
   const TutorialAction.row(
     this.row, {
-    this.hint,
     this.explain = false,
   })  : input = TutorialInput.row,
         gate = null,
         col = 0,
-        noChange = false;
+        noChange = false,
+        brief = null;
 
   const TutorialAction.column(
     this.col, {
-    this.hint,
     this.explain = false,
   })  : input = TutorialInput.column,
         gate = null,
         row = 0,
-        noChange = false;
+        noChange = false,
+        brief = null;
 
   const TutorialAction.apply({
     this.noChange = false,
     this.explain = false,
   })  : input = TutorialInput.apply,
-        hint = null,
         gate = null,
         row = 0,
-        col = 0;
+        col = 0,
+        brief = null;
 }
 
 class TutorialCell {
@@ -94,6 +97,7 @@ class TutorialPuzzle {
   final PieceType fill;
   final List<TutorialCell> overrides;
   final List<TutorialAction> actions;
+  final TutorialClearNote? clearNote;
 
   const TutorialPuzzle({
     required this.topic,
@@ -101,6 +105,7 @@ class TutorialPuzzle {
     required this.fill,
     required this.overrides,
     required this.actions,
+    this.clearNote,
   });
 
   Board buildBoard() {
@@ -136,47 +141,26 @@ const List<TutorialCell> _centerBlack = [
   TutorialCell(4, 4, PieceType.black),
 ];
 
-const List<TutorialCell> _centerWhite = [
-  TutorialCell(3, 3, PieceType.white),
-  TutorialCell(3, 4, PieceType.white),
-  TutorialCell(4, 3, PieceType.white),
-  TutorialCell(4, 4, PieceType.white),
-];
-
-const List<TutorialCell> _centerPlus = [
-  TutorialCell(3, 3, PieceType.grayPlus),
-  TutorialCell(3, 4, PieceType.grayPlus),
-  TutorialCell(4, 3, PieceType.grayPlus),
-  TutorialCell(4, 4, PieceType.grayPlus),
-];
-
-const List<TutorialCell> _centerMinus = [
-  TutorialCell(3, 3, PieceType.grayMinus),
-  TutorialCell(3, 4, PieceType.grayMinus),
-  TutorialCell(4, 3, PieceType.grayMinus),
-  TutorialCell(4, 4, PieceType.grayMinus),
-];
-
-const List<TutorialCell> _topRowWhite = [
-  TutorialCell(0, 0, PieceType.white),
-  TutorialCell(0, 1, PieceType.white),
-  TutorialCell(0, 2, PieceType.white),
-  TutorialCell(0, 3, PieceType.white),
-  TutorialCell(0, 4, PieceType.white),
-  TutorialCell(0, 5, PieceType.white),
-  TutorialCell(0, 6, PieceType.white),
-  TutorialCell(0, 7, PieceType.white),
-];
-
-const List<TutorialCell> _leftColumnBlack = [
+const List<TutorialCell> _topRowBlack = [
   TutorialCell(0, 0, PieceType.black),
-  TutorialCell(1, 0, PieceType.black),
-  TutorialCell(2, 0, PieceType.black),
-  TutorialCell(3, 0, PieceType.black),
-  TutorialCell(4, 0, PieceType.black),
-  TutorialCell(5, 0, PieceType.black),
-  TutorialCell(6, 0, PieceType.black),
-  TutorialCell(7, 0, PieceType.black),
+  TutorialCell(0, 1, PieceType.black),
+  TutorialCell(0, 2, PieceType.black),
+  TutorialCell(0, 3, PieceType.black),
+  TutorialCell(0, 4, PieceType.black),
+  TutorialCell(0, 5, PieceType.black),
+  TutorialCell(0, 6, PieceType.black),
+  TutorialCell(0, 7, PieceType.black),
+];
+
+const List<TutorialCell> _leftColumnMinus = [
+  TutorialCell(0, 0, PieceType.grayMinus),
+  TutorialCell(1, 0, PieceType.grayMinus),
+  TutorialCell(2, 0, PieceType.grayMinus),
+  TutorialCell(3, 0, PieceType.grayMinus),
+  TutorialCell(4, 0, PieceType.grayMinus),
+  TutorialCell(5, 0, PieceType.grayMinus),
+  TutorialCell(6, 0, PieceType.grayMinus),
+  TutorialCell(7, 0, PieceType.grayMinus),
 ];
 
 const List<TutorialCell> _swapSetup = [
@@ -191,74 +175,16 @@ const List<TutorialCell> _swapSetup = [
   TutorialCell(2, 3, PieceType.white),
 ];
 
-/// 初回チュートリアルの全課題。文章は、押し方が初めてのときだけ出す。
+/// 初回チュートリアル。操作は光に従わせ、解説はクリア後に出す。
 const List<TutorialPuzzle> interactiveTutorialPuzzles = [
   TutorialPuzzle(
     topic: TutorialTopic.controls,
     goalType: PieceType.white,
     fill: PieceType.white,
     overrides: _centerBlack,
+    clearNote: TutorialClearNote.piecesChange,
     actions: [
       TutorialAction.gate(GateType.x),
-      TutorialAction.cell(3, 3),
-      TutorialAction.apply(),
-    ],
-  ),
-  TutorialPuzzle(
-    topic: TutorialTopic.controls,
-    goalType: PieceType.black,
-    fill: PieceType.black,
-    overrides: _topRowWhite,
-    actions: [
-      TutorialAction.gate(GateType.x),
-      TutorialAction.row(
-        0,
-        hint: TutorialHint.selectWholeRow,
-        explain: true,
-      ),
-      TutorialAction.apply(),
-    ],
-  ),
-  TutorialPuzzle(
-    topic: TutorialTopic.controls,
-    goalType: PieceType.white,
-    fill: PieceType.white,
-    overrides: _leftColumnBlack,
-    actions: [
-      TutorialAction.gate(GateType.x),
-      TutorialAction.column(0),
-      TutorialAction.apply(),
-    ],
-  ),
-  TutorialPuzzle(
-    topic: TutorialTopic.hGate,
-    goalType: PieceType.white,
-    fill: PieceType.white,
-    overrides: _centerPlus,
-    actions: [
-      TutorialAction.gate(GateType.h),
-      TutorialAction.cell(3, 3),
-      TutorialAction.apply(),
-    ],
-  ),
-  TutorialPuzzle(
-    topic: TutorialTopic.hGate,
-    goalType: PieceType.black,
-    fill: PieceType.black,
-    overrides: _centerMinus,
-    actions: [
-      TutorialAction.gate(GateType.h),
-      TutorialAction.cell(3, 3),
-      TutorialAction.apply(),
-    ],
-  ),
-  TutorialPuzzle(
-    topic: TutorialTopic.yGate,
-    goalType: PieceType.black,
-    fill: PieceType.black,
-    overrides: _centerWhite,
-    actions: [
-      TutorialAction.gate(GateType.y),
       TutorialAction.cell(3, 3),
       TutorialAction.apply(),
     ],
@@ -267,27 +193,26 @@ const List<TutorialPuzzle> interactiveTutorialPuzzles = [
     topic: TutorialTopic.yGate,
     goalType: PieceType.white,
     fill: PieceType.white,
-    overrides: _centerMinus,
+    overrides: _topRowBlack,
+    clearNote: TutorialClearNote.selectLine,
     actions: [
       TutorialAction.gate(GateType.y),
-      TutorialAction.cell(3, 3),
-      TutorialAction.apply(),
-      TutorialAction.gate(GateType.h),
-      TutorialAction.cell(3, 3),
+      TutorialAction.row(0),
       TutorialAction.apply(),
     ],
   ),
   TutorialPuzzle(
     topic: TutorialTopic.zGate,
-    goalType: PieceType.black,
-    fill: PieceType.black,
-    overrides: _centerPlus,
+    goalType: PieceType.white,
+    fill: PieceType.white,
+    overrides: _leftColumnMinus,
+    clearNote: TutorialClearNote.differentEffects,
     actions: [
       TutorialAction.gate(GateType.z),
-      TutorialAction.cell(3, 3),
+      TutorialAction.column(0),
       TutorialAction.apply(),
       TutorialAction.gate(GateType.h),
-      TutorialAction.cell(3, 3),
+      TutorialAction.column(0),
       TutorialAction.apply(),
     ],
   ),
@@ -296,6 +221,7 @@ const List<TutorialPuzzle> interactiveTutorialPuzzles = [
     goalType: PieceType.black,
     fill: PieceType.black,
     overrides: _swapSetup,
+    clearNote: TutorialClearNote.twoPieces,
     actions: [
       TutorialAction.gate(GateType.swap),
       TutorialAction.cell(2, 3),
@@ -320,8 +246,8 @@ const List<TutorialPuzzle> interactiveTutorialPuzzles = [
       TutorialAction.apply(noChange: true),
       TutorialAction.gate(
         GateType.cnot,
-        hint: TutorialHint.cnotBlackControl,
         explain: true,
+        brief: TutorialBrief.cnotBlackControl,
       ),
       TutorialAction.cell(3, 3),
       TutorialAction.cell(3, 4),

@@ -53,7 +53,7 @@ class _GuideStep {
 }
 
 class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
-  static const String _challengeGuideShownKey = 'challenge_play_guide_shown';
+  static const String _challengeGuideShownKey = 'challenge_play_guide_shown_v3';
   GateType? _selectedGate;
   List<Position> _selectedPositions = [];
   int? _selectedRow;
@@ -72,10 +72,6 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
   bool _doubleTapApplyEnabled = false;
   final _cellDoubleTap = CellDoubleTapApplyController();
   final GlobalKey _goalConditionKey = GlobalKey();
-  final GlobalKey _xGateButtonKey = GlobalKey();
-  final GlobalKey _boardAreaKey = GlobalKey();
-  final GlobalKey _applyGateButtonKey = GlobalKey();
-  final GlobalKey _gateInfoButtonKey = GlobalKey();
   OverlayEntry? _guideOverlay;
   Animation<double>? _routeAnimation;
   AnimationStatusListener? _routeAnimationListener;
@@ -187,22 +183,6 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         key: _goalConditionKey,
         message: l10n.challengeGuideStep1,
       ),
-      _GuideStep(
-        key: _xGateButtonKey,
-        message: l10n.challengeGuideStep2,
-      ),
-      _GuideStep(
-        key: _boardAreaKey,
-        message: l10n.challengeGuideStep3,
-      ),
-      _GuideStep(
-        key: _applyGateButtonKey,
-        message: l10n.challengeGuideStep4,
-      ),
-      _GuideStep(
-        key: _gateInfoButtonKey,
-        message: l10n.challengeGuideStep5,
-      ),
     ];
     _guideStepIndex = 0;
     _showGuideStep();
@@ -232,32 +212,18 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
   Rect? _targetRect(GlobalKey key) {
     final renderObject = key.currentContext?.findRenderObject();
-    if (renderObject is! RenderBox) return null;
-    final offset = renderObject.localToGlobal(Offset.zero);
+    if (renderObject is! RenderBox || !renderObject.hasSize) return null;
+    final overlayObject = Overlay.of(context).context.findRenderObject();
+    if (overlayObject is! RenderBox) return null;
+    final offset = renderObject.localToGlobal(
+      Offset.zero,
+      ancestor: overlayObject,
+    );
     return offset & renderObject.size;
   }
 
   Widget _buildGuideOverlay(Rect targetRect) {
-    final screenSize = MediaQuery.of(context).size;
-    // 3番目（盤面）は実寸、それ以外は約1.2倍
-    final scale = _guideStepIndex == 2 ? 1.0 : 1.2;
-    final highlightRect = Rect.fromCenter(
-      center: targetRect.center,
-      width: targetRect.width * scale,
-      height: targetRect.height * scale,
-    );
-    final center = highlightRect.center;
-    const bubbleWidth = 300.0;
-    const bubbleHeight = 132.0;
-    final left = (center.dx - bubbleWidth / 2)
-        .clamp(12.0, screenSize.width - bubbleWidth - 12.0)
-        .toDouble();
-    final top = (highlightRect.bottom + 12.0 + bubbleHeight < screenSize.height)
-        ? (highlightRect.bottom + 12.0)
-        : (highlightRect.top - bubbleHeight - 12.0);
-    final isBubbleAbove = top < highlightRect.top;
-    final connectorX =
-        (center.dx - left).clamp(14.0, bubbleWidth - 14.0).toDouble();
+    final highlightRect = targetRect.inflate(6);
 
     return Stack(
       children: [
@@ -268,7 +234,7 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
             child: ClipPath(
               clipper: _GuideHighlightCutoutClipper(
                 targetRect: highlightRect,
-                borderRadius: 12,
+                borderRadius: 8,
               ),
               clipBehavior: Clip.antiAlias,
               child: Container(color: Colors.black54),
@@ -284,84 +250,68 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
               height: highlightRect.height,
               decoration: BoxDecoration(
                 color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.white, width: 2),
               ),
             ),
           ),
         ),
-        Positioned(
-          left: left,
-          top: top,
-          child: Material(
-            color: Colors.transparent,
-            child: SizedBox(
-              width: bubbleWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isBubbleAbove)
-                    Padding(
-                      padding: EdgeInsets.only(left: connectorX - 6),
-                      child: const Icon(
-                        Icons.arrow_drop_up,
-                        color: Color(0xFF2A3158),
-                        size: 16,
-                      ),
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.center,
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: 300,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2A3158),
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                  DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF2A3158),
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _guideSteps[_guideStepIndex].message,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 15),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _guideSteps[_guideStepIndex].message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
                           ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: InkWell(
-                              onTap: _nextGuideStep,
-                              borderRadius: BorderRadius.circular(6),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 4,
-                                ),
-                                child: Text(
-                                  _guideStepIndex == _guideSteps.length - 1
-                                      ? AppLocalizations.of(context).done
-                                      : AppLocalizations.of(context).next,
-                                  style: const TextStyle(
-                                    color: Colors.lightBlueAccent,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          heightFactor: 1,
+                          child: InkWell(
+                            onTap: _nextGuideStep,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                              child: Text(
+                                _guideStepIndex == _guideSteps.length - 1
+                                    ? AppLocalizations.of(context).close
+                                    : AppLocalizations.of(context).next,
+                                style: const TextStyle(
+                                  color: Colors.lightBlueAccent,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  if (isBubbleAbove)
-                    Padding(
-                      padding: EdgeInsets.only(left: connectorX - 6),
-                      child: const Icon(
-                        Icons.arrow_drop_down,
-                        color: Color(0xFF2A3158),
-                        size: 16,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
@@ -474,7 +424,6 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
 
                                       // ボード
                                       ConstrainedBox(
-                                        key: _boardAreaKey,
                                         constraints: BoxConstraints(
                                           maxHeight:
                                               constraints.maxHeight * 0.5,
@@ -676,26 +625,28 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  key: _goalConditionKey,
-                  child: Text(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Column(
+                key: _goalConditionKey,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     AppLocalizations.of(context).goalLabel(
                       widget.level.victoryCondition
                           .localizedName(AppLocalizations.of(context)),
                     ),
                     style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppLocalizations.of(context)
-                      .optimalTurnsLabel(widget.level.optimalTurns),
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    AppLocalizations.of(context)
+                        .optimalTurnsLabel(widget.level.optimalTurns),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
             ),
           ),
           // ターンカウントを右上に表示
@@ -740,7 +691,6 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
                   _hideGuideOverlay();
                   _showGateInfoDialog(context);
                 },
-                key: _gateInfoButtonKey,
                 icon: const Icon(Icons.info_outline, color: Colors.white),
                 tooltip: AppLocalizations.of(context).gateEffectsTooltip,
                 visualDensity: VisualDensity.compact,
@@ -782,7 +732,6 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           ],
           const SizedBox(height: 16),
           ElevatedButton(
-            key: _applyGateButtonKey,
             onPressed:
                 _canApplyGate() ? () => _applyGate(context, provider) : null,
             style: ElevatedButton.styleFrom(
@@ -932,18 +881,15 @@ class _ChallengeGameScreenState extends State<ChallengeGameScreen> {
           rows: rows,
           showEffectIcon: showIcons,
           itemBuilder: (gate) {
-            return SizedBox(
-              key: gate == GateType.x ? _xGateButtonKey : null,
-              child: GateButton(
-                gate: gate,
-                isEnabled: true,
-                isSelected: _selectedGate == gate,
-                showEffectIcon: showIcons,
-                playerColor: player?.color ?? PlayerColor.black,
-                onTap: () {
-                  _handleGateSelection(gate);
-                },
-              ),
+            return GateButton(
+              gate: gate,
+              isEnabled: true,
+              isSelected: _selectedGate == gate,
+              showEffectIcon: showIcons,
+              playerColor: player?.color ?? PlayerColor.black,
+              onTap: () {
+                _handleGateSelection(gate);
+              },
             );
           },
         );

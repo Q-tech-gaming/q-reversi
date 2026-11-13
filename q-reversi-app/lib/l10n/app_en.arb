@@ -228,14 +228,10 @@
       }
     }
   },
-  "challengeGuideStep1": "1. Check the clear condition.\nTurn the whole board white or black to clear the level.",
-  "challengeGuideStep2": "2. Choose a gate",
-  "challengeGuideStep3": "3. Choose the pieces to affect.\nTap a cell on the board, or a button beside it.",
-  "challengeGuideStep4": "4. Tap Apply Gate to use it on those pieces",
-  "challengeGuideStep5": "5. You can review gate effects anytime with this info button",
+  "challengeGuideStep1": "Reach the goal in as few turns as you can!",
   "challengeAvailableGates": "Available gates",
-  "challengeLevelClearTitle": "🎉 Level cleared!",
-  "challengeLevelClearMessage": "Level {label} cleared!",
+  "challengeLevelClearTitle": "🎉 LEVEL CLEARED",
+  "challengeLevelClearMessage": "Level {label}",
   "@challengeLevelClearMessage": {
     "placeholders": {
       "label": {
@@ -320,17 +316,11 @@
   },
   "vsGuideIntro": "In VS Mode, you take turns applying gates and try to finish with more pieces.",
   "vsGuideSelectX": "First, choose the X gate",
-  "vsGuideSelectBoard": "You'll gain the most pieces at {label} (net +{netGain}: {blackFlips} black → white).\nTap the highlighted target",
+  "vsGuideSelectBoard": "You'll gain the most pieces at {label}.\nTap the highlighted target",
   "@vsGuideSelectBoard": {
     "placeholders": {
       "label": {
         "type": "String"
-      },
-      "netGain": {
-        "type": "int"
-      },
-      "blackFlips": {
-        "type": "int"
       }
     }
   },
@@ -348,11 +338,11 @@
   "runMeasurement": "Run Measurement",
   "measureConfirmTitle": "Ready to measure?",
   "measureConfirmMessage": "Measure now and show the result?",
-  "resultDraw": "Draw",
-  "resultVictory": "Victory!",
-  "resultDefeat": "Defeat",
-  "resultWhiteWins": "White wins!",
-  "resultBlackWins": "Black wins!",
+  "resultDraw": "DRAW",
+  "resultVictory": "VICTORY",
+  "resultDefeat": "DEFEAT",
+  "resultWhiteWins": "WHITE WINS",
+  "resultBlackWins": "BLACK WINS",
   "resultBannerVictory": "VICTORY",
   "resultBannerDefeat": "DEFEAT",
   "resultBannerDraw": "DRAW",
@@ -495,8 +485,10 @@
   "tutorialReturnToModeSelect": "Heading back to mode select.",
   "tutorialStartOperating": "Try it",
   "tutorialSelectGateButton": "Choose a gate button.",
-  "tutorialIntroConcept": "Q-Reversi mixes quantum computing with Reversi.",
-  "tutorialIntroHowTo": "Let's learn the controls.\nTap the highlighted spot.",
+  "tutorialIntroConcept": "Q-Reversi Tutorial",
+  "tutorialIntroHowTo": "Tap the highlighted spot.",
+  "tutorialClear": "Clear!",
+  "tutorialGateChangesPieces": "Applying a gate button below changes the pieces.",
   "tutorialGoalLabel": "Goal: {goal}",
   "@tutorialGoalLabel": {
     "placeholders": {
@@ -515,7 +507,10 @@
   "tutorialTopicZGate": "Learn the Z gate",
   "tutorialTopicSwapGate": "Learn the SWAP gate",
   "tutorialTopicCnotGate": "Learn the CNOT gate",
-  "tutorialHintSelectWholeRow": "You can also select a whole row at once.",
+  "tutorialHintSelectWholeRow": "You can also select a whole line at once.",
+  "tutorialClearNotePiecesChange": "Applying a gate changes the pieces.",
+  "tutorialClearNoteEffects": "Each gate has a different effect.",
+  "tutorialClearNoteTwoPieces": "Some gates choose two pieces.",
   "tutorialHintCnotBlackControl": "If the first piece is black, the second piece changes.",
   "tutorialUnderstood": "Got it",
   "pieceGrayPlus": "Gray plus",

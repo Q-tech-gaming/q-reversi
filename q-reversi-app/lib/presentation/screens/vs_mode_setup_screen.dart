@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/vs_game_persistence_service.dart';
 import '../../domain/entities/game_mode.dart';
@@ -70,7 +71,7 @@ class _VsModeSetupScreenState extends State<VsModeSetupScreen> {
     setState(() {
       _cpuProgress = snap;
       _cpuProgressLoading = false;
-      _humanModeUnlocked = snap.isHumanModeUnlocked;
+      _humanModeUnlocked = kDebugMode || snap.isHumanModeUnlocked;
       _turnOptionsUnlocked = snap.isTurnOptionsUnlocked;
       if (!_humanModeUnlocked) {
         _vsMode = VsMode.cpu;

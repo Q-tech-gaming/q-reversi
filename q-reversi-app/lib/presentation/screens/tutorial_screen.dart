@@ -50,13 +50,11 @@ class _TutorialScreenState extends State<TutorialScreen>
   bool _briefing = false;
   int _briefStep = 0;
   int? _introStep = 0;
+  bool _showClear = false;
+  String? _clearDetail;
+  int _clearToken = 0;
   bool _returned = false;
   bool _guideFramePending = false;
-
-  static const int _introMessageCount = 2;
-
-  String _introMessage(AppLocalizations l10n, int step) =>
-      step == 0 ? l10n.tutorialIntroConcept : l10n.tutorialIntroHowTo;
 
   String _topicTitle(AppLocalizations l10n, TutorialTopic topic) {
     switch (topic) {
@@ -78,14 +76,27 @@ class _TutorialScreenState extends State<TutorialScreen>
   String _goalLabel(AppLocalizations l10n, PieceType goal) =>
       goal == PieceType.black ? l10n.victoryAllBlack : l10n.victoryAllWhite;
 
-  String _hintText(AppLocalizations l10n, TutorialHint? hint) {
-    switch (hint) {
-      case TutorialHint.selectWholeRow:
-        return l10n.tutorialHintSelectWholeRow;
-      case TutorialHint.cnotBlackControl:
+  String _briefText(AppLocalizations l10n, TutorialBrief? brief) {
+    switch (brief) {
+      case TutorialBrief.cnotBlackControl:
         return l10n.tutorialHintCnotBlackControl;
       case null:
         return '';
+    }
+  }
+
+  String? _clearNoteText(AppLocalizations l10n, TutorialClearNote? note) {
+    switch (note) {
+      case TutorialClearNote.piecesChange:
+        return l10n.tutorialClearNotePiecesChange;
+      case TutorialClearNote.selectLine:
+        return l10n.tutorialHintSelectWholeRow;
+      case TutorialClearNote.differentEffects:
+        return l10n.tutorialClearNoteEffects;
+      case TutorialClearNote.twoPieces:
+        return l10n.tutorialClearNoteTwoPieces;
+      case null:
+        return null;
     }
   }
 
@@ -292,19 +303,7 @@ class _TutorialScreenState extends State<TutorialScreen>
         await _completeAndReturn();
         return;
       }
-      setState(() {
-        _highlight = [];
-        _puzzleIndex++;
-        _board = _puzzle.buildBoard();
-        _actionIndex = 0;
-        _selectedPositions = [];
-        _selectedRow = null;
-        _selectedColumn = null;
-        _selectedGate = null;
-        _briefStep = 0;
-        _briefing = _explainIndexes().isNotEmpty;
-        _locked = false;
-      });
+      await _showClearThenContinue();
       return;
     }
 
@@ -316,6 +315,49 @@ class _TutorialScreenState extends State<TutorialScreen>
       _briefing = _explainIndexes().isNotEmpty;
       _locked = false;
     });
+  }
+
+  void _advancePuzzle() {
+    setState(() {
+      _showClear = false;
+      _clearDetail = null;
+      _highlight = [];
+      _puzzleIndex++;
+      _board = _puzzle.buildBoard();
+      _actionIndex = 0;
+      _selectedPositions = [];
+      _selectedRow = null;
+      _selectedColumn = null;
+      _selectedGate = null;
+      _briefStep = 0;
+      _briefing = _explainIndexes().isNotEmpty;
+      _locked = false;
+    });
+  }
+
+  Future<void> _showClearThenContinue() async {
+    final token = ++_clearToken;
+    final detail = _clearNoteText(
+      AppLocalizations.of(context),
+      _puzzle.clearNote,
+    );
+    SoundEffects.instance.challengeClear();
+    setState(() {
+      _highlight = [];
+      _showClear = true;
+      _clearDetail = detail;
+      _locked = true;
+      _briefing = false;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 3000));
+    if (!mounted || token != _clearToken) return;
+    _advancePuzzle();
+  }
+
+  void _skipClear() {
+    if (!_showClear) return;
+    _clearToken++;
+    _advancePuzzle();
   }
 
   Future<void> _completeAndReturn() async {
@@ -334,13 +376,8 @@ class _TutorialScreenState extends State<TutorialScreen>
   }
 
   void _nextIntro() {
-    final step = _introStep;
-    if (step == null) return;
+    if (_introStep == null) return;
     SoundEffects.instance.click();
-    if (step < _introMessageCount - 1) {
-      setState(() => _introStep = step + 1);
-      return;
-    }
     setState(() {
       _introStep = null;
       _briefStep = 0;
@@ -562,16 +599,19 @@ class _TutorialScreenState extends State<TutorialScreen>
               Positioned.fill(
                 child: _TutorialCompletePopup(onDismiss: _returnToModeSelect),
               )
+            else if (_showClear)
+              Positioned.fill(
+                child: _TutorialClearPopup(
+                  detail: _clearDetail,
+                  onDismiss: _skipClear,
+                ),
+              )
             else if (_introStep != null)
               Positioned.fill(
                 child: TutorialStepGuide(
-                  message: _introMessage(l10n, _introStep!),
-                  imageAsset: _introStep == 0
-                      ? 'assets/QC_and_Othello.jpg'
-                      : null,
-                  nextLabel: _introStep == _introMessageCount - 1
-                      ? l10n.tutorialStartOperating
-                      : l10n.next,
+                  heading: l10n.tutorialIntroConcept,
+                  message: l10n.tutorialIntroHowTo,
+                  nextLabel: l10n.tutorialStartOperating,
                   onNext: _nextIntro,
                 ),
               )
@@ -579,7 +619,7 @@ class _TutorialScreenState extends State<TutorialScreen>
               Positioned.fill(
                 child: TutorialStepGuide(
                   targetRect: guideRect,
-                  message: _hintText(l10n, briefAction?.hint),
+                  message: _briefText(l10n, briefAction?.brief),
                   nextLabel: _briefStep >= _explainIndexes().length - 1
                       ? l10n.tutorialStartOperating
                       : l10n.next,
@@ -734,6 +774,69 @@ class _TutorialScreenState extends State<TutorialScreen>
         child: Text(
           AppLocalizations.of(context).applyGate,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+}
+
+class _TutorialClearPopup extends StatelessWidget {
+  const _TutorialClearPopup({
+    required this.onDismiss,
+    this.detail,
+  });
+
+  final VoidCallback onDismiss;
+  final String? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final note = detail;
+    return GestureDetector(
+      onTap: onDismiss,
+      behavior: HitTestBehavior.opaque,
+      child: ColoredBox(
+        color: Colors.black54,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Color(0xFF2A3158),
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.tutorialClear,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (note != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        note,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

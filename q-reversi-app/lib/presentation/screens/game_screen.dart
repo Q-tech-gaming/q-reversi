@@ -414,11 +414,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _vsTutorialBestTarget = best;
         return _VsTutorialOverlayConfig(
           targetRect: _rectForBestTarget(best) ?? _rectForKey(_vsBoardKey),
-          message: l10n.vsGuideSelectBoard(
-            best.label,
-            best.netGain,
-            best.blackFlips,
-          ),
+          message: l10n.vsGuideSelectBoard(best.label),
           nextLabel: l10n.ok,
           onNext: _closeVsGuideAndAwaitAction,
           scale: 1.15,
@@ -1715,13 +1711,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             : isDraw
                 ? l10n.resultDraw
                 : l10n.resultBlackWins;
-    final resultLabel = isDraw
-        ? l10n.resultBannerDraw
-        : vsCpu
-            ? playerWon
-                ? l10n.resultBannerVictory
-                : l10n.resultBannerDefeat
-            : l10n.resultBannerWinner;
     final accentColor = isDraw
         ? const Color(0xFFE2E8F0)
         : vsCpu && !playerWon
@@ -1737,7 +1726,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       isDraw: isDraw,
       isVsCpu: vsCpu,
       playerWon: playerWon,
-      resultLabel: resultLabel,
       showRankingButton:
           vsCpu && playerWon && cpuDifficulty == AIDifficulty.quantum,
     );
@@ -1842,7 +1830,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   ) async {
     final l10n = AppLocalizations.of(context);
     late final String result;
-    late final String resultLabel;
     late final int whiteCount;
     late final int blackCount;
     late final bool isVsCpu;
@@ -1851,37 +1838,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case _ResultPreview.cpuWin:
       case _ResultPreview.cpuQuantumWin:
         result = l10n.resultVictory;
-        resultLabel = l10n.resultBannerVictory;
         whiteCount = 18;
         blackCount = 10;
         isVsCpu = true;
       case _ResultPreview.cpuLoss:
         result = l10n.resultDefeat;
-        resultLabel = l10n.resultBannerDefeat;
         whiteCount = 9;
         blackCount = 19;
         isVsCpu = true;
       case _ResultPreview.cpuDraw:
         result = l10n.resultDraw;
-        resultLabel = l10n.resultBannerDraw;
         whiteCount = 14;
         blackCount = 14;
         isVsCpu = true;
       case _ResultPreview.pvpWhiteWin:
         result = l10n.resultWhiteWins;
-        resultLabel = l10n.resultBannerWinner;
         whiteCount = 17;
         blackCount = 11;
         isVsCpu = false;
       case _ResultPreview.pvpBlackWin:
         result = l10n.resultBlackWins;
-        resultLabel = l10n.resultBannerWinner;
         whiteCount = 10;
         blackCount = 18;
         isVsCpu = false;
       case _ResultPreview.pvpDraw:
         result = l10n.resultDraw;
-        resultLabel = l10n.resultBannerDraw;
         whiteCount = 14;
         blackCount = 14;
         isVsCpu = false;
@@ -1910,7 +1891,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       isDraw: isDraw,
       isVsCpu: isVsCpu,
       playerWon: playerWon,
-      resultLabel: resultLabel,
       showRankingButton: showRankingButton,
     );
     if (openRanking == true && context.mounted) {
@@ -1931,7 +1911,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required bool isDraw,
     required bool isVsCpu,
     required bool playerWon,
-    required String resultLabel,
     bool showRankingButton = false,
   }) {
     return showGeneralDialog<bool>(
@@ -1950,7 +1929,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           isDraw: isDraw,
           isVsCpu: isVsCpu,
           playerWon: playerWon,
-          resultLabel: resultLabel,
           showRankingButton: showRankingButton,
         );
       },
@@ -1980,7 +1958,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required bool isDraw,
     required bool isVsCpu,
     required bool playerWon,
-    required String resultLabel,
     bool showRankingButton = false,
   }) {
     final l10n = AppLocalizations.of(context);
@@ -2073,24 +2050,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   ),
                 ),
               if (!isVsCpu || playerWon || isDraw) const SizedBox(height: 18),
+              // 小バナー（VICTORY 等）と大見出し（Victory! 等）の二重表示をやめ、
+              // 大きい方だけを大文字で出す。
               Text(
-                resultLabel,
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                result,
+                result.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 30,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
+                  letterSpacing: 2,
                   shadows: [
                     Shadow(
                       color: Colors.black54,

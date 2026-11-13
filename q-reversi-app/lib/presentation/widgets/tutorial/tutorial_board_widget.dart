@@ -155,12 +155,25 @@ class TutorialBoardWidget extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        AppLocalizations.of(context).tutorialQuantumComputer,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(
+                        width: imageSize,
+                        height: 40,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              AppLocalizations.of(context)
+                                  .tutorialQuantumComputer,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -170,6 +183,7 @@ class TutorialBoardWidget extends StatelessWidget {
                         child: Image.asset(
                           'assets/QC_img.png',
                           fit: BoxFit.contain,
+                          alignment: Alignment.center,
                           errorBuilder: (context, error, stackTrace) {
                             debugPrint('画像読み込みエラー: assets/QC_img.png');
                             debugPrint('エラー: $error');
@@ -218,12 +232,24 @@ class TutorialBoardWidget extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        AppLocalizations.of(context).tutorialQReversi,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(
+                        width: boardSize,
+                        height: 40,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              AppLocalizations.of(context).tutorialQReversi,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

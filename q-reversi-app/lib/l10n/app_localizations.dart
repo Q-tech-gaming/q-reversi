@@ -617,32 +617,8 @@ abstract class AppLocalizations {
   /// No description provided for @challengeGuideStep1.
   ///
   /// In en, this message translates to:
-  /// **'1. Check the clear condition.\nTurn the whole board white or black to clear the level.'**
+  /// **'Reach the goal in as few turns as you can!'**
   String get challengeGuideStep1;
-
-  /// No description provided for @challengeGuideStep2.
-  ///
-  /// In en, this message translates to:
-  /// **'2. Choose a gate'**
-  String get challengeGuideStep2;
-
-  /// No description provided for @challengeGuideStep3.
-  ///
-  /// In en, this message translates to:
-  /// **'3. Choose the pieces to affect.\nTap a cell on the board, or a button beside it.'**
-  String get challengeGuideStep3;
-
-  /// No description provided for @challengeGuideStep4.
-  ///
-  /// In en, this message translates to:
-  /// **'4. Tap Apply Gate to use it on those pieces'**
-  String get challengeGuideStep4;
-
-  /// No description provided for @challengeGuideStep5.
-  ///
-  /// In en, this message translates to:
-  /// **'5. You can review gate effects anytime with this info button'**
-  String get challengeGuideStep5;
 
   /// No description provided for @challengeAvailableGates.
   ///
@@ -653,13 +629,13 @@ abstract class AppLocalizations {
   /// No description provided for @challengeLevelClearTitle.
   ///
   /// In en, this message translates to:
-  /// **'🎉 Level cleared!'**
+  /// **'🎉 LEVEL CLEARED'**
   String get challengeLevelClearTitle;
 
   /// No description provided for @challengeLevelClearMessage.
   ///
   /// In en, this message translates to:
-  /// **'Level {label} cleared!'**
+  /// **'Level {label}'**
   String challengeLevelClearMessage(String label);
 
   /// No description provided for @challengeTurnsUsed.
@@ -857,8 +833,8 @@ abstract class AppLocalizations {
   /// No description provided for @vsGuideSelectBoard.
   ///
   /// In en, this message translates to:
-  /// **'You\'ll gain the most pieces at {label} (net +{netGain}: {blackFlips} black → white).\nTap the highlighted target'**
-  String vsGuideSelectBoard(String label, int netGain, int blackFlips);
+  /// **'You\'ll gain the most pieces at {label}.\nTap the highlighted target'**
+  String vsGuideSelectBoard(String label);
 
   /// No description provided for @vsGuideApply.
   ///
@@ -947,31 +923,31 @@ abstract class AppLocalizations {
   /// No description provided for @resultDraw.
   ///
   /// In en, this message translates to:
-  /// **'Draw'**
+  /// **'DRAW'**
   String get resultDraw;
 
   /// No description provided for @resultVictory.
   ///
   /// In en, this message translates to:
-  /// **'Victory!'**
+  /// **'VICTORY'**
   String get resultVictory;
 
   /// No description provided for @resultDefeat.
   ///
   /// In en, this message translates to:
-  /// **'Defeat'**
+  /// **'DEFEAT'**
   String get resultDefeat;
 
   /// No description provided for @resultWhiteWins.
   ///
   /// In en, this message translates to:
-  /// **'White wins!'**
+  /// **'WHITE WINS'**
   String get resultWhiteWins;
 
   /// No description provided for @resultBlackWins.
   ///
   /// In en, this message translates to:
-  /// **'Black wins!'**
+  /// **'BLACK WINS'**
   String get resultBlackWins;
 
   /// No description provided for @resultBannerVictory.
@@ -1559,14 +1535,26 @@ abstract class AppLocalizations {
   /// No description provided for @tutorialIntroConcept.
   ///
   /// In en, this message translates to:
-  /// **'Q-Reversi mixes quantum computing with Reversi.'**
+  /// **'Q-Reversi Tutorial'**
   String get tutorialIntroConcept;
 
   /// No description provided for @tutorialIntroHowTo.
   ///
   /// In en, this message translates to:
-  /// **'Let\'s learn the controls.\nTap the highlighted spot.'**
+  /// **'Tap the highlighted spot.'**
   String get tutorialIntroHowTo;
+
+  /// No description provided for @tutorialClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear!'**
+  String get tutorialClear;
+
+  /// No description provided for @tutorialGateChangesPieces.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying a gate button below changes the pieces.'**
+  String get tutorialGateChangesPieces;
 
   /// No description provided for @tutorialGoalLabel.
   ///
@@ -1637,8 +1625,26 @@ abstract class AppLocalizations {
   /// No description provided for @tutorialHintSelectWholeRow.
   ///
   /// In en, this message translates to:
-  /// **'You can also select a whole row at once.'**
+  /// **'You can also select a whole line at once.'**
   String get tutorialHintSelectWholeRow;
+
+  /// No description provided for @tutorialClearNotePiecesChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying a gate changes the pieces.'**
+  String get tutorialClearNotePiecesChange;
+
+  /// No description provided for @tutorialClearNoteEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Each gate has a different effect.'**
+  String get tutorialClearNoteEffects;
+
+  /// No description provided for @tutorialClearNoteTwoPieces.
+  ///
+  /// In en, this message translates to:
+  /// **'Some gates choose two pieces.'**
+  String get tutorialClearNoteTwoPieces;
 
   /// No description provided for @tutorialHintCnotBlackControl.
   ///

@@ -7,6 +7,7 @@ class TutorialStepGuide extends StatelessWidget {
     super.key,
     this.targetRect,
     this.imageAsset,
+    this.heading,
     required this.message,
     required this.nextLabel,
     required this.onNext,
@@ -17,6 +18,9 @@ class TutorialStepGuide extends StatelessWidget {
 
   /// 中央表示のとき、文章の上に出す画像。
   final String? imageAsset;
+
+  /// 画像の下に、中央ぞろえで出す見出し。
+  final String? heading;
   final String message;
   final String nextLabel;
   final VoidCallback onNext;
@@ -157,14 +161,31 @@ class TutorialStepGuide extends StatelessWidget {
               ),
               const SizedBox(height: 10),
             ],
-            Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.4,
+            if (heading != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  heading!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
+                  ),
+                ),
               ),
-            ),
+              if (message.isNotEmpty) const SizedBox(height: 8),
+            ],
+            if (message.isNotEmpty)
+              Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerRight,

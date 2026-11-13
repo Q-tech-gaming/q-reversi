@@ -43,11 +43,17 @@ class GateButton extends StatelessWidget {
     this.isVsMode = false,
   });
 
+  /// 相手の表示。手番が移るときにクールタイムが1減るので、0と1は次の相手ターンで使える。
+  bool get _readyOnOpponentsNextTurn {
+    final showsOpponentGates = compact || (isReadOnly && isVsMode);
+    return showsOpponentGates && (cooldown ?? 0) <= 1;
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = AppTheme.getGateButtonStyle(
       gate,
-      isEnabled,
+      isEnabled || _readyOnOpponentsNextTurn,
       isSelected,
       isReadOnly,
     );
@@ -72,7 +78,8 @@ class GateButton extends StatelessWidget {
     );
 
     // 読み取り専用の相手ボタンは、コンパクト表示ではクールタイムを読みやすく残す。
-    if (isReadOnly && !compact) {
+    // 次の相手ターンで使えるゲートは、薄い紫が分かるようにさらに薄くしない。
+    if (isReadOnly && !compact && !_readyOnOpponentsNextTurn) {
       return Opacity(
         opacity: 0.6,
         child: button,
